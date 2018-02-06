@@ -12,8 +12,12 @@ libraryDependencies ++= {
   val CirceVersion = "0.9.0"
   Seq(
     "io.github.howardjohn" %% "http4s-lambda" % "0.2.0-SNAPSHOT",
+
     "org.http4s" %% "http4s-dsl" % Http4sVersion,
     "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
+
+    "com.gu" %% "scanamo" % "1.0.0-M3",
+    "org.log4s" %% "log4s" % "1.4.0",
     "org.scalatest" %% "scalatest" % "3.0.4" % "test"
   )
 }
