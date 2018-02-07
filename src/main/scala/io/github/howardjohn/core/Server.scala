@@ -5,11 +5,8 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import fs2.StreamApp
 import io.circe.generic.auto._
-import io.github.howardjohn.core.ConfigDatastore.ConfigEntry
-import org.http4s.circe._
 import org.http4s.server.blaze.BlazeBuilder
 
-import com.gu.scanamo._
 object Server extends StreamApp[IO] {
 
   val dynamo = AmazonDynamoDBClientBuilder
@@ -18,7 +15,7 @@ object Server extends StreamApp[IO] {
     .build()
 
   implicit val jsonFormt = DynamoConfigDatastore.jsonFormat
-  val route = new Route(table => new DynamoConfigDatastore(dynamo, Table[ConfigEntry](table)))
+  val route = new Route(new DynamoConfigDatastore(dynamo))
 
   def stream(args: List[String], requestShutdown: IO[Unit]) =
     BlazeBuilder[IO]
