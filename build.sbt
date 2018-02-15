@@ -16,6 +16,8 @@ libraryDependencies ++= {
     "org.http4s" %% "http4s-dsl" % Http4sVersion,
     "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
 
+    "org.slf4j" % "slf4j-simple" % "1.7.25" % Runtime,
+
     "com.gu" %% "scanamo" % "1.0.0-M3",
     "org.log4s" %% "log4s" % "1.4.0",
     "org.scalatest" %% "scalatest" % "3.0.4" % "test"
