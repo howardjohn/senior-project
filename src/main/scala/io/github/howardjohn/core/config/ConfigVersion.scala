@@ -7,6 +7,7 @@ trait ConfigVersion {
   def version: String
   def namespace: String
 
+  def freeze(): Result[Unit]
   def cloneVersion(newVersionName: String): Result[ConfigVersion]
 
   def get(key: String): Result[Option[ConfigEntry]]

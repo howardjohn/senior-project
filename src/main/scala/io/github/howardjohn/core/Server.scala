@@ -5,7 +5,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder, AmazonDynamoDBClientBuilder}
 import fs2.StreamApp
 import io.circe.generic.auto._
-import io.github.howardjohn.core.impl.DynamoConfigDatastore
+import io.github.howardjohn.core.impl.{DynamoConfigDatastore, Scanamo}
 import org.http4s.server.blaze.BlazeBuilder
 
 object Server extends StreamApp[IO] {
@@ -15,7 +15,8 @@ object Server extends StreamApp[IO] {
     .withRegion(Regions.US_WEST_2)
     .build()
 
-  val route = new Route(new DynamoConfigDatastore(dynamo))
+  implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
+  val route = new Route(new DynamoConfigDatastore(new Scanamo(dynamo)))
 
   def stream(args: List[String], requestShutdown: IO[Unit]) =
     BlazeBuilder[IO]

@@ -6,5 +6,5 @@ trait ConfigNamespace {
   def namespace: String
 
   def getVersion(version: String): ConfigVersion
-  def createVersion(name: String): Result[ConfigVersion]
+  def createVersion(version: String): Result[ConfigVersion]
 }

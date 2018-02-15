@@ -4,7 +4,9 @@ import cats.effect._
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
-import io.github.howardjohn.core.config.{ConfigDatastore, ConfigError}
+import io.github.howardjohn.core.config.ConfigDatastore
+import io.github.howardjohn.core.config.ConfigError
+import io.github.howardjohn.core.config.ConfigError._
 import io.github.howardjohn.core.config.ConfigDatastore.ConfigEntry
 import org.http4s._
 import org.http4s.circe._
@@ -41,6 +43,18 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
           .write(entry.key, entry.value)
         response <- translateErrors[Unit](result)(_ => Ok("", Location(location)))
       } yield response
+    case req @ PUT -> Root / namespace / version =>
+      for {
+        entry <- req.decodeJson[FreezeVersionRequest]
+        result <- if (entry.frozen) {
+          db.getNamespace(namespace)
+            .getVersion(version)
+            .freeze()
+        } else {
+          IO(Left(FrozenVersion))
+        }
+        response <- translateErrors[Unit](result)(_ => Ok(""))
+      } yield response
     case GET -> Root / namespace / version =>
       db.getNamespace(namespace)
         .getVersion(version)
@@ -65,18 +79,24 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
   }
 
   def translateErrors[A](resp: Either[ConfigError, A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
-    resp.fold(
-      err => {
-        log.error(s"Config Error: $err")
-        InternalServerError()
-      },
-      f
-    )
+    resp.fold(processError, f)
+
+  def processError(err: ConfigError): IO[Response[IO]] =
+    IO(log.error(s"Error encountered: $err"))
+      .flatMap(_ =>
+        err match {
+          case FrozenVersion => MethodNotAllowed()
+          case _ => InternalServerError()
+      })
 }
 
 object Route {
   case class CreateNamespaceRequest(
     namespace: String
+  )
+
+  case class FreezeVersionRequest(
+    frozen: Boolean
   )
 
   case class CreateVersionRequest(
