@@ -11,7 +11,7 @@ import io.circe.parser.parse
 import io.github.howardjohn.core.config.ConfigDatastore.ConfigEntry
 import io.github.howardjohn.core.config.ConfigError
 import io.github.howardjohn.core.config.ConfigError.{IllegalWrite, UnknownError}
-import io.github.howardjohn.core.impl.DynamoConfigVersion.VersionEntry
+import io.github.howardjohn.core.config.ConfigVersion.VersionEntry
 
 import scala.concurrent.ExecutionContext
 

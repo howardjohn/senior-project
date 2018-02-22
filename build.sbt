@@ -8,7 +8,7 @@ scalacOptions ++= Seq("-Ypartial-unification")
 resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
-  val Http4sVersion = "0.18.0-M8"
+  val Http4sVersion = "0.18.0"
   val CirceVersion = "0.9.0"
   Seq(
     "io.github.howardjohn" %% "http4s-lambda" % "0.2.0-SNAPSHOT",

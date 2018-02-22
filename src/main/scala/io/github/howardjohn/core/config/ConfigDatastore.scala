@@ -1,5 +1,7 @@
 package io.github.howardjohn.core.config
 
+import java.time.Instant
+
 import cats.effect.IO
 import io.circe.Json
 
@@ -17,4 +19,16 @@ object ConfigDatastore {
     version: String,
     value: Json
   )
+
+  case class AuditInfo(
+    createdTime: Option[Long] = None,
+    modifiedTime: Option[Long] = None
+  )
+
+  object AuditInfo{
+    def default(getNow: => Long = Instant.now.toEpochMilli): AuditInfo = {
+      val now = getNow
+      AuditInfo(Some(now), Some(now))
+    }
+  }
 }
