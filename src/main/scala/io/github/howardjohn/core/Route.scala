@@ -5,14 +5,14 @@ import cats.implicits._
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
-import io.github.howardjohn.core.config.ConfigDatastore.ConfigEntry
-import io.github.howardjohn.core.config.{ConfigDatastore, ConfigError}
-import io.github.howardjohn.core.config.ConfigError._
+import io.github.howardjohn.core.ConfigError._
+import io.github.howardjohn.core.config.ConfigDatastore
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io.{->, _}
 import org.http4s.headers.Location
 import org.slf4j.LoggerFactory
+
 class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]], encoder: Encoder[ConfigEntry]) {
 
   import Route._
@@ -26,6 +26,11 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
         newName <- db.createNamespace(request.namespace)
         location <- IO.fromEither(Uri.fromString(s"/namespace/${request.namespace}"))
         response <- translateErrors[Any](newName)(_ => Ok("", Location(location)))
+      } yield response
+    case GET -> Root / "namespace" / namespace =>
+      for {
+        versions <- db.getNamespace(namespace).getVersions()
+        response <- translateErrors(versions)(v => Ok(v.asJson))
       } yield response
   }
 
@@ -42,7 +47,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
         versionInfo <- db.getNamespace(namespace).getVersion(version).details()
         response <- translateErrors(versionInfo)(info => Ok(info.asJson))
       } yield response
-    case req @ PUT -> Root / "namespace" / namespace / "version" / version  =>
+    case req @ PUT -> Root / "namespace" / namespace / "version" / version =>
       for {
         entry <- req.decodeJson[FreezeVersionRequest]
         result <- if (entry.frozen) {

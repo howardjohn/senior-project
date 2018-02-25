@@ -4,14 +4,12 @@ import cats.effect.IO
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException
 import com.gu.scanamo.error.TypeCoercionError
-import com.gu.scanamo.{DynamoFormat, ScanamoAsync, Table}
 import com.gu.scanamo.ops.ScanamoOps
+import com.gu.scanamo.{DynamoFormat, ScanamoAsync, Table}
 import io.circe.Json
 import io.circe.parser.parse
-import io.github.howardjohn.core.config.ConfigDatastore.ConfigEntry
-import io.github.howardjohn.core.config.ConfigError
-import io.github.howardjohn.core.config.ConfigError.{IllegalWrite, UnknownError}
-import io.github.howardjohn.core.config.ConfigVersion.VersionEntry
+import io.github.howardjohn.core.ConfigError._
+import io.github.howardjohn.core._
 
 import scala.concurrent.ExecutionContext
 

@@ -1,7 +1,7 @@
 package io.github.howardjohn.core.impl
 
 import cats.effect.IO
-import io.github.howardjohn.core.config.ConfigDatastore.Result
+import io.github.howardjohn.core._
 import io.github.howardjohn.core.config.{ConfigDatastore, ConfigNamespace}
 
 class DynamoConfigDatastore(scanamo: Scanamo) extends ConfigDatastore {
@@ -11,7 +11,7 @@ class DynamoConfigDatastore(scanamo: Scanamo) extends ConfigDatastore {
   }
 
   def getNamespace(namespace: String): ConfigNamespace =
-    new DynamoConfigNamespace (namespace, scanamo)
+    new DynamoConfigNamespace(namespace, scanamo)
 }
 
 object DynamoConfigDatastore {}

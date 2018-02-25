@@ -9,10 +9,9 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.syntax._
 import io.circe.Json
-import io.github.howardjohn.core.config.ConfigDatastore.{ConfigEntry, Result}
-import io.github.howardjohn.core.config.ConfigError._
-import io.github.howardjohn.core.config.ConfigVersion.VersionEntry
-import io.github.howardjohn.core.config.{ConfigError, ConfigVersion}
+import io.github.howardjohn.core.ConfigError._
+import io.github.howardjohn.core._
+import io.github.howardjohn.core.config.ConfigVersion
 
 class DynamoConfigVersion(val namespace: String, val version: String, scanamo: Scanamo) extends ConfigVersion {
   import DynamoConfigVersion._
