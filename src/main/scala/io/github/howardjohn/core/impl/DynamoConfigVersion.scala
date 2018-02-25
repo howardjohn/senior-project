@@ -48,11 +48,8 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
       .map(_.sequence)
       .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
 
-  def getAll(): Result[List[ConfigEntry]] =
-    scanamo
-      .exec(table.index(versionIndex).query('version -> version))
-      .map(_.sequence)
-      .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
+  def getAll(): Result[Seq[ConfigEntry]] =
+    scanamo.query(table.index(versionIndex))('version -> version)
 
   def delete(key: String): Result[Unit] =
     condExec {

@@ -16,20 +16,10 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
     new DynamoConfigTag(namespace, tag, scanamo)
 
   def getVersions(): Result[Seq[VersionEntry]] =
-    scanamo.exec {
-      Scanamo.versionsTable
-        .query('namespace -> namespace)
-        .map(_.sequence)
-        .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
-    }
+    scanamo.query(Scanamo.versionsTable)('namespace -> namespace)
 
   def getTags(): Result[Seq[TagEntry]] =
-    scanamo.exec {
-      Scanamo.tagsTable
-        .query('namespace -> namespace)
-        .map(_.sequence)
-        .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
-    }
+    scanamo.query(Scanamo.tagsTable)('namespace -> namespace)
 
   def createVersion(version: String): Result[ConfigVersion] =
     scanamo
