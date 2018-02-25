@@ -50,7 +50,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case GET -> Root / "namespace" / namespace / "tag" / tag =>
       for {
         tagEntry <- db.getNamespace(namespace).getTag(tag).getDetails()
-        response <- translateErrors(tagEntry)(t => Ok(t.asJson))
+        response <- translateErrors(tagEntry)(jsonOrNotFound)
       } yield response
   }
 
@@ -65,7 +65,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case GET -> Root / "namespace" / namespace / "version" / version =>
       for {
         versionInfo <- db.getNamespace(namespace).getVersion(version).details()
-        response <- translateErrors(versionInfo)(info => Ok(info.asJson))
+        response <- translateErrors(versionInfo)(jsonOrNotFound)
       } yield response
     case req @ PUT -> Root / "namespace" / namespace / "version" / version =>
       for {
@@ -101,10 +101,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
       db.getNamespace(namespace)
         .getVersion(version)
         .get(key)
-        .flatMap(resp =>
-          translateErrors(resp) { entry =>
-            entry.fold(NotFound())(e => Ok(e.asJson))
-        })
+        .flatMap(resp => translateErrors(resp)(jsonOrNotFound))
     case DELETE -> Root / "namespace" / namespace / "version" / version / "config" / key =>
       for {
         result <- db
@@ -123,6 +120,9 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
 
   private def translateErrors[A](resp: Either[ConfigError, A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
     resp.fold(processError, f)
+
+  private def jsonOrNotFound[A: Encoder](item: Option[A]) =
+    item.map(e => Ok(e.asJson)).getOrElse(NotFound())
 
   private def processError(err: ConfigError): IO[Response[IO]] =
     IO(log.error(s"Error encountered: $err"))
