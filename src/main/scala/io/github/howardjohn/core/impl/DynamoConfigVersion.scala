@@ -39,7 +39,7 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
 
   def write(key: String, value: Json): Result[Unit] =
     condExec {
-      table.put(ConfigEntry(key, version, value))
+      table.put(ConfigEntry(key, version, value, AuditInfo.default()))
     }.map(_.right.map(_ => ()))
 
   def get(key: String): Result[Option[ConfigEntry]] =

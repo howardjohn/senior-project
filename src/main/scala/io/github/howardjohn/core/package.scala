@@ -12,7 +12,8 @@ package object core {
   case class ConfigEntry(
     key: String,
     version: String,
-    value: Json
+    value: Json,
+    auditInfo: AuditInfo
   )
 
   case class VersionEntry(
