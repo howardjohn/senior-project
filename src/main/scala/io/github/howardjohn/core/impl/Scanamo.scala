@@ -20,13 +20,16 @@ class Scanamo(val dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
 object Scanamo {
   val versionsTableName = "Versions"
   val versionsTable: Table[VersionEntry] = Table[VersionEntry](versionsTableName)
+  val tagsTableName = "Tags"
+  val tagsTable: Table[TagEntry] = Table[TagEntry](tagsTableName)
+
+  def configTable(namespace: String): Table[ConfigEntry] = Table[ConfigEntry](namespace)
 
   implicit val jsonFormat: DynamoFormat[Json] = DynamoFormat.xmap[Json, String](
     in => parse(in).left.map(f => TypeCoercionError(f))
   )(
     json => json.noSpaces
   )
-  def configTable(namespace: String): Table[ConfigEntry] = Table[ConfigEntry](namespace)
 
   def mapErrors[A, E](result: Either[E, A]): Either[ConfigError, A] = result.left.map {
     case _: ConditionalCheckFailedException => IllegalWrite

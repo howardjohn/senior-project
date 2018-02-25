@@ -5,16 +5,27 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.syntax._
 import io.github.howardjohn.core.ConfigError._
 import io.github.howardjohn.core._
-import io.github.howardjohn.core.config.{ConfigNamespace, ConfigVersion}
+import io.github.howardjohn.core.config.{ConfigNamespace, ConfigTag, ConfigVersion}
 
 class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends ConfigNamespace {
 
   def getVersion(version: String): ConfigVersion =
     new DynamoConfigVersion(namespace, version, scanamo)
 
+  def getTag(tag: String): ConfigTag =
+    new DynamoConfigTag(namespace, tag, scanamo)
+
   def getVersions(): Result[Seq[VersionEntry]] =
     scanamo.exec {
       Scanamo.versionsTable
+        .query('namespace -> namespace)
+        .map(_.sequence)
+        .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
+    }
+
+  def getTags(): Result[Seq[TagEntry]] =
+    scanamo.exec {
+      Scanamo.tagsTable
         .query('namespace -> namespace)
         .map(_.sequence)
         .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
@@ -29,4 +40,14 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
       }
       .map(Scanamo.mapErrors)
       .map(_.right.map(_ => getVersion(version)))
+
+  def createTag(tag: String, version: String): Result[ConfigTag] =
+    scanamo
+      .exec {
+        Scanamo.tagsTable
+          .given(attributeNotExists('namespace) and attributeNotExists('tag))
+          .put(TagEntry(namespace, tag, version, AuditInfo.default()))
+      }
+      .map(Scanamo.mapErrors)
+      .map(_.right.map(_ => getTag(tag)))
 }

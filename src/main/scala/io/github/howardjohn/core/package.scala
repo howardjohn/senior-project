@@ -23,6 +23,13 @@ package object core {
     auditInfo: AuditInfo
   )
 
+  case class TagEntry(
+    namespace: String,
+    tag: String,
+    version: String,
+    auditInfo: AuditInfo
+  )
+
   case class AuditInfo(
     createdTime: Option[Long] = None,
     modifiedTime: Option[Long] = None

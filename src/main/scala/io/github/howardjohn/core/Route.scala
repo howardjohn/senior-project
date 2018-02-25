@@ -34,6 +34,26 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
       } yield response
   }
 
+  private val tagService = HttpService[IO] {
+    case req @ POST -> Root / "namespace" / namespace / "tag" =>
+      for {
+        request <- req.decodeJson[CreateTagRequest]
+        newTag <- db.getNamespace(namespace).createTag(request.tag, request.version)
+        location <- IO.fromEither(Uri.fromString(s"/namespace/$namespace/tag/${request.tag}"))
+        response <- translateErrors[Any](newTag)(_ => Ok("", Location(location)))
+      } yield response
+    case GET -> Root / "namespace" / namespace / "tag" =>
+      for {
+        tags <- db.getNamespace(namespace).getTags()
+        response <- translateErrors(tags)(ts => Ok(ts.asJson))
+      } yield response
+    case GET -> Root / "namespace" / namespace / "tag" / tag =>
+      for {
+        tagEntry <- db.getNamespace(namespace).getTag(tag).getDetails()
+        response <- translateErrors(tagEntry)(t => Ok(t.asJson))
+      } yield response
+  }
+
   private val versionService = HttpService[IO] {
     case req @ POST -> Root / "namespace" / namespace / "version" =>
       for {
@@ -99,7 +119,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case GET -> Root / "ping" => Ok("pong")
   }
 
-  val service: HttpService[IO] = pingService <+> namespaceService <+> versionService <+> configService
+  val service: HttpService[IO] = pingService <+> namespaceService <+> versionService <+> tagService <+> configService
 
   private def translateErrors[A](resp: Either[ConfigError, A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
     resp.fold(processError, f)
@@ -118,12 +138,17 @@ object Route {
     namespace: String
   )
 
-  case class FreezeVersionRequest(
-    frozen: Boolean
+  case class CreateTagRequest(
+    tag: String,
+    version: String
   )
 
   case class CreateVersionRequest(
     version: String
+  )
+
+  case class FreezeVersionRequest(
+    frozen: Boolean
   )
 
   case class ConfigRequest(
