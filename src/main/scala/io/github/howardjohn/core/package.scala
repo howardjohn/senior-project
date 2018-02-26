@@ -3,7 +3,6 @@ package io.github.howardjohn
 import java.time.Instant
 
 import cats.effect.IO
-import io.circe.generic.auto._
 import io.circe.Json
 
 package object core {

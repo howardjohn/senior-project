@@ -1,9 +1,7 @@
 package io.github.howardjohn.core.impl
 
 import cats.implicits._
-import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.syntax._
-import io.github.howardjohn.core.ConfigError._
 import io.github.howardjohn.core._
 import io.github.howardjohn.core.config.{ConfigNamespace, ConfigTag, ConfigVersion}
 
@@ -16,10 +14,10 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
     new DynamoConfigTag(namespace, tag, scanamo)
 
   def getVersions(): Result[Seq[VersionEntry]] =
-    scanamo.query(Scanamo.versionsTable)('namespace -> namespace)
+      scanamo.execRead[VersionEntry, List](Scanamo.versionsTable.query('namespace -> namespace))
 
   def getTags(): Result[Seq[TagEntry]] =
-    scanamo.query(Scanamo.tagsTable)('namespace -> namespace)
+    scanamo.execRead[TagEntry, List](Scanamo.tagsTable.query('namespace -> namespace))
 
   def createVersion(version: String): Result[ConfigVersion] =
     scanamo

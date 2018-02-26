@@ -1,5 +1,6 @@
 package io.github.howardjohn.core.impl
 
+import cats.Traverse
 import cats.effect.IO
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException
@@ -18,18 +19,9 @@ import cats.implicits._
 class Scanamo(val dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
   def exec[A](ops: ScanamoOps[A]): IO[A] = IO.fromFuture(IO(ScanamoAsync.exec(dynamo)(ops)))
 
-  def query[A](table: Table[A])(query: Query[_]): Result[Seq[A]] =
+  def execRead[A, F[_]: Traverse](ops: ScanamoOps[F[Either[DynamoReadError, A]]]): Result[F[A]] =
     exec {
-      table
-        .query(query)
-        .map(_.sequence)
-        .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
-    }
-
-  def query[A](index: SecondaryIndex[A])(query: Query[_]): Result[Seq[A]] =
-    exec {
-      index
-        .query(query)
+      ops
         .map(_.sequence)
         .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
     }

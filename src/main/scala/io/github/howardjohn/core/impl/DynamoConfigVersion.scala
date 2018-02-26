@@ -23,12 +23,9 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     throw new RuntimeException("Not implemented yet")
 
   def details(): Result[Option[VersionEntry]] =
-    scanamo
-      .exec(Scanamo.versionsTable.get('namespace -> namespace and 'version -> version))
-      .map(_.sequence)
-      .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
+    scanamo.execRead(Scanamo.versionsTable.get('namespace -> namespace and 'version -> version))
 
-  def freeze(): Result[Unit] =
+  def freeze(): IO[Either[ConfigError, Unit]] =
     scanamo
       .exec(
         Scanamo.versionsTable.update(
@@ -43,13 +40,10 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     }.map(_.right.map(_ => ()))
 
   def get(key: String): Result[Option[ConfigEntry]] =
-    scanamo
-      .exec(table.get('key -> key and 'version -> version))
-      .map(_.sequence)
-      .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
+    scanamo.execRead(table.get('key -> key and 'version -> version))
 
   def getAll(): Result[Seq[ConfigEntry]] =
-    scanamo.query(table.index(versionIndex))('version -> version)
+    scanamo.execRead[ConfigEntry, List](table.index(versionIndex).query('version -> version))
 
   def delete(key: String): Result[Unit] =
     condExec {
