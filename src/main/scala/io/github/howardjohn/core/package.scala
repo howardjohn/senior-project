@@ -2,11 +2,12 @@ package io.github.howardjohn
 
 import java.time.Instant
 
+import cats.data.EitherT
 import cats.effect.IO
 import io.circe.Json
 
 package object core {
-  type Result[A] = IO[Either[ConfigError, A]]
+  type Result[A] = EitherT[IO, ConfigError, A]
 
   case class ConfigEntry(
     key: String,

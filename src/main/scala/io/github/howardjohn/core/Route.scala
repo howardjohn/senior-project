@@ -1,6 +1,6 @@
 package io.github.howardjohn.core
 
-import cats.data.{Kleisli, OptionT}
+import cats.data.{EitherT, Kleisli, OptionT}
 import cats.effect._
 import cats.implicits._
 import io.circe._
@@ -22,106 +22,74 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
 
   private val namespaceService = HttpService[IO] {
     case req @ POST -> Root / "namespace" =>
-      for {
-        request <- req.decodeJson[CreateNamespaceRequest]
+      translateLocation(for {
+        request <- parseJson[CreateNamespaceRequest](req)
         newName <- db.createNamespace(request.namespace)
-        location = makeUri(s"/namespace/${request.namespace}")
-        response <- translateErrors[Any](newName) { _ =>
-          translateErrors(location)(loc => Ok("", Location(loc)))
-        }
-      } yield response
+        location <- makeUri(s"/namespace/${request.namespace}")
+      } yield location)
     case GET -> Root / "namespace" / namespace =>
-      for {
-        versions <- db.getNamespace(namespace).getVersions()
-        response <- translateErrors(versions)(v => Ok(v.asJson))
-      } yield response
+      translateJson(db.getNamespace(namespace).getVersions())
   }
 
   private val tagService = HttpService[IO] {
     case req @ POST -> Root / "namespace" / namespace / "tag" =>
-      for {
-        request <- req.decodeJson[CreateTagRequest]
+      translateLocation(for {
+        request <- parseJson[CreateTagRequest](req)
         newTag <- db.getNamespace(namespace).createTag(request.tag, request.version)
-        location <- IO.fromEither(Uri.fromString(s"/namespace/$namespace/tag/${request.tag}"))
-        response <- translateErrors[Any](newTag)(_ => Ok("", Location(location)))
-      } yield response
+        location <- makeUri(s"/namespace/$namespace/tag/${request.tag}")
+      } yield location)
     case GET -> Root / "namespace" / namespace / "tag" =>
-      for {
-        tags <- db.getNamespace(namespace).getTags()
-        response <- translateErrors(tags)(ts => Ok(ts.asJson))
-      } yield response
+      translateJson(db.getNamespace(namespace).getTags())
     case req @ PUT -> Root / "namespace" / namespace / "tag" / tag =>
-      for {
-        version <- req.decodeJson[MoveTagRequest]
-        result <-
-          db.getNamespace(namespace)
-            .getTag(tag)
-            .moveTag(version.version)
-        response <- translateErrors[Unit](result)(_ => Ok(""))
-      } yield response
+      translateUnit(for {
+        version <- parseJson[MoveTagRequest](req)
+        result <- db
+          .getNamespace(namespace)
+          .getTag(tag)
+          .moveTag(version.version)
+      } yield result)
     case GET -> Root / "namespace" / namespace / "tag" / tag =>
-      for {
-        tagEntry <- db.getNamespace(namespace).getTag(tag).getDetails()
-        response <- translateErrors(tagEntry)(jsonOrNotFound)
-      } yield response
+      translateOptionalJson(db.getNamespace(namespace).getTag(tag).getDetails())
   }
 
   private val versionService = HttpService[IO] {
     case req @ POST -> Root / "namespace" / namespace / "version" =>
-      for {
-        request <- req.decodeJson[CreateVersionRequest]
+      translateLocation(for {
+        request <- parseJson[CreateVersionRequest](req)
         newVersion <- db.getNamespace(namespace).createVersion(request.version)
-        location <- IO.fromEither(Uri.fromString(s"/namespace/$namespace/version/${request.version}"))
-        response <- translateErrors[Any](newVersion)(_ => Ok("", Location(location)))
-      } yield response
+        location <- makeUri(s"/namespace/$namespace/version/${request.version}")
+      } yield location)
     case GET -> Root / "namespace" / namespace / "version" / version =>
-      for {
-        versionInfo <- db.getNamespace(namespace).getVersion(version).details()
-        response <- translateErrors(versionInfo)(jsonOrNotFound)
-      } yield response
+      translateOptionalJson(db.getNamespace(namespace).getVersion(version).details())
     case req @ PUT -> Root / "namespace" / namespace / "version" / version =>
-      for {
-        entry <- req.decodeJson[FreezeVersionRequest]
+      translateUnit(for {
+        entry <- parseJson[FreezeVersionRequest](req)
         result <- if (entry.frozen) {
           db.getNamespace(namespace)
             .getVersion(version)
             .freeze()
         } else {
-          IO(Left(FrozenVersion))
+          EitherT.leftT[IO, Unit](FrozenVersion: ConfigError)
         }
-        response <- translateErrors[Unit](result)(_ => Ok(""))
-      } yield response
+      } yield result)
   }
 
   private val configService = HttpService[IO] {
     case req @ POST -> Root / "namespace" / namespace / "version" / version / "config" =>
-      for {
-        entry <- req.decodeJson[ConfigRequest]
-        location <- IO.fromEither(Uri.fromString(s"/namespace/$namespace/version/$version/config/${entry.key}"))
+      translateLocation(for {
+        entry <- parseJson[ConfigRequest](req)
+        location <- makeUri(s"/namespace/$namespace/version/$version/config/${entry.key}")
         result <- db
           .getNamespace(namespace)
           .getVersion(version)
           .write(entry.key, entry.value)
-        response <- translateErrors[Unit](result)(_ => Ok("", Location(location)))
-      } yield response
+      } yield location)
     case GET -> Root / "namespace" / namespace / "version" / version / "config" =>
-      db.getNamespace(namespace)
-        .getVersion(version)
-        .getAll()
-        .flatMap(resp => translateErrors(resp)(r => Ok(r.asJson)))
+      translateJson(db.getNamespace(namespace).getVersion(version).getAll())
     case GET -> Root / "namespace" / namespace / "version" / version / "config" / key =>
-      db.getNamespace(namespace)
-        .getVersion(version)
-        .get(key)
-        .flatMap(resp => translateErrors(resp)(jsonOrNotFound))
+      translateOptionalJson(db.getNamespace(namespace).getVersion(version).get(key))
     case DELETE -> Root / "namespace" / namespace / "version" / version / "config" / key =>
-      for {
-        result <- db
-          .getNamespace(namespace)
-          .getVersion(version)
-          .delete(key)
-        response <- translateErrors[Unit](result)(_ => Ok(""))
-      } yield response
+      translateUnit(db.getNamespace(namespace).getVersion(version).delete(key))
   }
 
   private val pingService = HttpService[IO] {
@@ -132,28 +100,38 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     req match {
       case _ -> "namespace" /: namespace /: "tag" /: tag /: rest =>
         OptionT.liftF {
-          db.getNamespace(namespace).getTag(tag).getDetails().flatMap { tagEntry =>
-            val versionEither = orNotFound(tagEntry).map(_.version)
-            val newUri = versionEither.map { version =>
-              makeUri(s"namespace/$namespace/version/$version$rest")
-            }
-            val newReq = newUri.joinRight.map(req.withUri)
-            val result = newReq.map(rq => service.orNotFound(rq))
-            translateErrors(result)(identity)
-          }
+          translate(
+            for {
+              tagEntry <- orNotFound(db.getNamespace(namespace).getTag(tag).getDetails())
+              uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}$rest")
+              newReq = req.withUri(uri)
+            } yield service.orNotFound(req.withUri(uri))
+          )(identity)
         }
       case _ => service(req)
     }
   }
 
-  val service: HttpService[IO] = pingService <+> namespaceService <+> versionService <+> tagService <+>
+  val service: HttpService[IO] = pingService <+> namespaceService <+> tagService <+> versionService <+>
     tagAsVersionMiddleware(configService)
 
-  private def translateErrors[A](resp: Either[ConfigError, A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
-    resp.fold(processError, f)
+  private def translate[A](resp: Result[A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
+    resp.fold(processError, f).flatten
 
-  private def jsonOrNotFound[A: Encoder](item: Option[A]) =
-    item.map(e => Ok(e.asJson)).getOrElse(NotFound())
+  private def translateJson[A: Encoder](resp: Result[A]): IO[Response[IO]] =
+    translate(resp)(r => Ok(r.asJson))
+
+  private def translateOptionalJson[A: Encoder](resp: Result[Option[A]]): IO[Response[IO]] =
+    translate(resp)(a => a.map(entry => Ok(entry.asJson)).getOrElse(NotFound()))
+
+  private def translateLocation(resp: Result[Uri]): IO[Response[IO]] =
+    translate(resp)(loc => Ok("", Location(loc)))
+
+  private def translateUnit[A](resp: Result[A]): IO[Response[IO]] =
+    translate(resp)(_ => Ok(""))
+
+  private def parseJson[A: Decoder](req: Request[IO]): Result[A] =
+    EitherT.liftF[IO, ConfigError, A](req.decodeJson[A])
 
   private def processError(err: ConfigError): IO[Response[IO]] =
     err match {
@@ -162,19 +140,23 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
       case _ => IO(log.error(s"Error encountered: $err")).flatMap(_ => InternalServerError())
     }
 
-  private def orNotFound[A](item: Either[ConfigError, Option[A]]): Either[ConfigError, A] = item match {
-    case Right(Some(value)) => Right(value)
-    case Right(None) => Left(MissingEntry)
-    case Left(error) => Left(error)
+  private def orNotFound[A](item: Result[Option[A]]): Result[A] = EitherT {
+    item.value.map {
+      case Right(Some(value)) => Right(value)
+      case Right(None) => Left(MissingEntry)
+      case Left(error) => Left(error)
+    }
   }
 
-  private def makeUri(uri: String): Either[ConfigError, Uri] =
-    Uri
-      .fromString(uri)
-      .fold(
-        error => Left(UnknownError(s"Couldn't make uri from $uri")),
-        right => Right(right)
-      )
+  private def makeUri(uri: String): Result[Uri] =
+    EitherT.fromEither[IO] {
+      Uri
+        .fromString(uri)
+        .fold(
+          error => Left(UnknownError(s"Couldn't make uri from $uri")),
+          right => Right(right)
+        )
+    }
 }
 
 object Route {

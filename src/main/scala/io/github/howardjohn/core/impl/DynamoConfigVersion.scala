@@ -5,7 +5,6 @@ import java.time.Instant
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits._
-import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.syntax._
 import io.circe.Json
@@ -26,14 +25,16 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     scanamo.execRead(Scanamo.versionsTable.get('namespace -> namespace and 'version -> version))
 
   def freeze(): Result[Unit] =
-    scanamo
-      .exec {
-        Scanamo.versionsTable.update(
-          'namespace -> namespace and 'version -> version,
-          set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now))
-      }
-      .map(Scanamo.mapErrors)
-      .map(_.map(_ => ()))
+    EitherT {
+      scanamo
+        .exec {
+          Scanamo.versionsTable.update(
+            'namespace -> namespace and 'version -> version,
+            set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now))
+        }
+        .map(Scanamo.mapErrors)
+        .map(_.map(_ => ()))
+    }
 
   def write(key: String, value: Json): Result[Unit] =
     condExec {
@@ -44,22 +45,24 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     scanamo.execRead(table.get('key -> key and 'version -> version))
 
   def getAll(): Result[Seq[ConfigEntry]] =
-    scanamo.execRead[ConfigEntry, List](table.index(versionIndex).query('version -> version))
+    EitherT(scanamo.execRead(table.index(versionIndex).query('version -> version)).value)
 
   def delete(key: String): Result[Unit] =
     condExec {
       table
         .delete('key -> key and 'version -> version)
-    }.map(e => e.map(_ => ()))
+    }.map(_ => ())
 
   private def condExec[A](ops: ScanamoOps[A]): Result[A] =
-    isFrozen()
-      .map(o => o.fold[Either[ConfigError, Boolean]](Left(ReadError("")))(Right(_)))
-      .flatMap {
-        case Right(true) => IO(Left(FrozenVersion))
-        case Right(false) => scanamo.exec(ops).map(Right(_))
-        case Left(e) => IO(Left(e))
-      }
+    EitherT {
+      isFrozen()
+        .map(o => o.fold[Either[ConfigError, Boolean]](Left(ReadError("")))(Right(_)))
+        .flatMap {
+          case Right(true) => IO(Left(FrozenVersion))
+          case Right(false) => scanamo.exec(ops).map(Right(_))
+          case Left(e) => IO(Left(e))
+        }
+    }
 
   private def isFrozen(): IO[Option[Boolean]] =
     scanamo

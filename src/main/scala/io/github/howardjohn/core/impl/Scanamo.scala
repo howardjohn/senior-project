@@ -1,6 +1,7 @@
 package io.github.howardjohn.core.impl
 
 import cats.Traverse
+import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits._
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
@@ -22,11 +23,13 @@ class Scanamo(val dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
   def exec[A](ops: ScanamoOps[A]): IO[A] = IO.fromFuture(IO(ScanamoAsync.exec(dynamo)(ops)))
 
   def execRead[A, F[_]: Traverse](ops: ScanamoOps[F[Either[DynamoReadError, A]]]): Result[F[A]] =
-    exec {
-      ops
-        .map(_.sequence)
-        .map(o => o.left.map(e => ReadError(DynamoReadError.describe(e))))
-    }
+    EitherT {
+      exec {
+        ops
+          .map(_.sequence)
+      }
+    }.leftMap(e => ReadError(DynamoReadError.describe(e)))
+
 }
 
 object Scanamo {

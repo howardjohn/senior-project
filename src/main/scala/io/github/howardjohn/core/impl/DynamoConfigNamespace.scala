@@ -1,5 +1,6 @@
 package io.github.howardjohn.core.impl
 
+import cats.data.EitherT
 import cats.implicits._
 import com.gu.scanamo.syntax._
 import io.github.howardjohn.core._
@@ -14,28 +15,32 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
     new DynamoConfigTag(namespace, tag, scanamo)
 
   def getVersions(): Result[Seq[VersionEntry]] =
-      scanamo.execRead[VersionEntry, List](Scanamo.versionsTable.query('namespace -> namespace))
+    EitherT(scanamo.execRead(Scanamo.versionsTable.query('namespace -> namespace)).value)
 
   def getTags(): Result[Seq[TagEntry]] =
-    scanamo.execRead[TagEntry, List](Scanamo.tagsTable.query('namespace -> namespace))
+    EitherT(scanamo.execRead(Scanamo.tagsTable.query('namespace -> namespace)).value)
 
   def createVersion(version: String): Result[ConfigVersion] =
-    scanamo
-      .exec {
-        Scanamo.versionsTable
-          .given(attributeNotExists('namespace) and attributeNotExists('version))
-          .put(VersionEntry(namespace, version, frozen = false, AuditInfo.default()))
-      }
-      .map(Scanamo.mapErrors)
-      .map(_.map(_ => getVersion(version)))
+    EitherT {
+      scanamo
+        .exec {
+          Scanamo.versionsTable
+            .given(attributeNotExists('namespace) and attributeNotExists('version))
+            .put(VersionEntry(namespace, version, frozen = false, AuditInfo.default()))
+        }
+        .map(Scanamo.mapErrors)
+        .map(_.map(_ => getVersion(version)))
+    }
 
   def createTag(tag: String, version: String): Result[ConfigTag] =
-    scanamo
-      .exec {
-        Scanamo.tagsTable
-          .given(attributeNotExists('namespace) and attributeNotExists('tag))
-          .put(TagEntry(namespace, tag, version, AuditInfo.default()))
-      }
-      .map(Scanamo.mapErrors)
-      .map(_.map(_ => getTag(tag)))
+    EitherT {
+      scanamo
+        .exec {
+          Scanamo.tagsTable
+            .given(attributeNotExists('namespace) and attributeNotExists('tag))
+            .put(TagEntry(namespace, tag, version, AuditInfo.default()))
+        }
+        .map(Scanamo.mapErrors)
+        .map(_.map(_ => getTag(tag)))
+    }
 }
