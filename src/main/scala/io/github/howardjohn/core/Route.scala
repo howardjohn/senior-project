@@ -50,6 +50,15 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
         tags <- db.getNamespace(namespace).getTags()
         response <- translateErrors(tags)(ts => Ok(ts.asJson))
       } yield response
+    case req @ PUT -> Root / "namespace" / namespace / "tag" / tag =>
+      for {
+        version <- req.decodeJson[MoveTagRequest]
+        result <-
+          db.getNamespace(namespace)
+            .getTag(tag)
+            .moveTag(version.version)
+        response <- translateErrors[Unit](result)(_ => Ok(""))
+      } yield response
     case GET -> Root / "namespace" / namespace / "tag" / tag =>
       for {
         tagEntry <- db.getNamespace(namespace).getTag(tag).getDetails()
@@ -175,6 +184,10 @@ object Route {
 
   case class CreateTagRequest(
     tag: String,
+    version: String
+  )
+
+  case class MoveTagRequest(
     version: String
   )
 

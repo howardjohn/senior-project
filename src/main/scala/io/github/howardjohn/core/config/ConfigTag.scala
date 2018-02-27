@@ -7,4 +7,5 @@ trait ConfigTag {
   def namespace: String
 
   def getDetails(): Result[Option[TagEntry]]
+  def moveTag(version: String): Result[Unit]
 }

@@ -25,12 +25,13 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
   def details(): Result[Option[VersionEntry]] =
     scanamo.execRead(Scanamo.versionsTable.get('namespace -> namespace and 'version -> version))
 
-  def freeze(): IO[Either[ConfigError, Unit]] =
+  def freeze(): Result[Unit] =
     scanamo
-      .exec(
+      .exec {
         Scanamo.versionsTable.update(
           'namespace -> namespace and 'version -> version,
-          set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now)))
+          set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now))
+      }
       .map(Scanamo.mapErrors)
       .map(_.map(_ => ()))
 
