@@ -27,7 +27,7 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
           .put(VersionEntry(namespace, version, frozen = false, AuditInfo.default()))
       }
       .map(Scanamo.mapErrors)
-      .map(_.right.map(_ => getVersion(version)))
+      .map(_.map(_ => getVersion(version)))
 
   def createTag(tag: String, version: String): Result[ConfigTag] =
     scanamo
@@ -37,5 +37,5 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
           .put(TagEntry(namespace, tag, version, AuditInfo.default()))
       }
       .map(Scanamo.mapErrors)
-      .map(_.right.map(_ => getTag(tag)))
+      .map(_.map(_ => getTag(tag)))
 }

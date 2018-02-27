@@ -1,5 +1,6 @@
 package io.github.howardjohn.core
 
+import cats.data.{Kleisli, OptionT}
 import cats.effect._
 import cats.implicits._
 import io.circe._
@@ -9,7 +10,7 @@ import io.github.howardjohn.core.ConfigError._
 import io.github.howardjohn.core.config.ConfigDatastore
 import org.http4s._
 import org.http4s.circe._
-import org.http4s.dsl.io.{->, _}
+import org.http4s.dsl.io._
 import org.http4s.headers.Location
 import org.slf4j.LoggerFactory
 
@@ -24,8 +25,10 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
       for {
         request <- req.decodeJson[CreateNamespaceRequest]
         newName <- db.createNamespace(request.namespace)
-        location <- IO.fromEither(Uri.fromString(s"/namespace/${request.namespace}"))
-        response <- translateErrors[Any](newName)(_ => Ok("", Location(location)))
+        location = makeUri(s"/namespace/${request.namespace}")
+        response <- translateErrors[Any](newName) { _ =>
+          translateErrors(location)(loc => Ok("", Location(loc)))
+        }
       } yield response
     case GET -> Root / "namespace" / namespace =>
       for {
@@ -116,7 +119,26 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case GET -> Root / "ping" => Ok("pong")
   }
 
-  val service: HttpService[IO] = pingService <+> namespaceService <+> versionService <+> tagService <+> configService
+  def tagAsVersionMiddleware(service: HttpService[IO]): HttpService[IO] = Kleisli { req: Request[IO] =>
+    req match {
+      case _ -> "namespace" /: namespace /: "tag" /: tag /: rest =>
+        OptionT.liftF {
+          db.getNamespace(namespace).getTag(tag).getDetails().flatMap { tagEntry =>
+            val versionEither = orNotFound(tagEntry).map(_.version)
+            val newUri = versionEither.map { version =>
+              makeUri(s"namespace/$namespace/version/$version$rest")
+            }
+            val newReq = newUri.joinRight.map(req.withUri)
+            val result = newReq.map(rq => service.orNotFound(rq))
+            translateErrors(result)(identity)
+          }
+        }
+      case _ => service(req)
+    }
+  }
+
+  val service: HttpService[IO] = pingService <+> namespaceService <+> versionService <+> tagService <+>
+    tagAsVersionMiddleware(configService)
 
   private def translateErrors[A](resp: Either[ConfigError, A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
     resp.fold(processError, f)
@@ -125,12 +147,25 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     item.map(e => Ok(e.asJson)).getOrElse(NotFound())
 
   private def processError(err: ConfigError): IO[Response[IO]] =
-    IO(log.error(s"Error encountered: $err"))
-      .flatMap(_ =>
-        err match {
-          case FrozenVersion => MethodNotAllowed()
-          case _ => InternalServerError()
-      })
+    err match {
+      case FrozenVersion => MethodNotAllowed()
+      case MissingEntry => NotFound()
+      case _ => IO(log.error(s"Error encountered: $err")).flatMap(_ => InternalServerError())
+    }
+
+  private def orNotFound[A](item: Either[ConfigError, Option[A]]): Either[ConfigError, A] = item match {
+    case Right(Some(value)) => Right(value)
+    case Right(None) => Left(MissingEntry)
+    case Left(error) => Left(error)
+  }
+
+  private def makeUri(uri: String): Either[ConfigError, Uri] =
+    Uri
+      .fromString(uri)
+      .fold(
+        error => Left(UnknownError(s"Couldn't make uri from $uri")),
+        right => Right(right)
+      )
 }
 
 object Route {

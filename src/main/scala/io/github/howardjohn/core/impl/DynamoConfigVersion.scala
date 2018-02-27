@@ -32,12 +32,12 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
           'namespace -> namespace and 'version -> version,
           set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now)))
       .map(Scanamo.mapErrors)
-      .map(_.right.map(_ => ()))
+      .map(_.map(_ => ()))
 
   def write(key: String, value: Json): Result[Unit] =
     condExec {
       table.put(ConfigEntry(key, version, value, AuditInfo.default()))
-    }.map(_.right.map(_ => ()))
+    }.map(_.map(_ => ()))
 
   def get(key: String): Result[Option[ConfigEntry]] =
     scanamo.execRead(table.get('key -> key and 'version -> version))
@@ -49,7 +49,7 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     condExec {
       table
         .delete('key -> key and 'version -> version)
-    }.map(e => e.right.map(_ => ()))
+    }.map(e => e.map(_ => ()))
 
   private def condExec[A](ops: ScanamoOps[A]): Result[A] =
     isFrozen()

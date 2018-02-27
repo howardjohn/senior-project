@@ -39,6 +39,7 @@ package object core {
   object ConfigError {
     case object IllegalWrite extends ConfigError
     case object FrozenVersion extends ConfigError
+    case object MissingEntry extends ConfigError
     case class ReadError(cause: String) extends ConfigError
     case class UnknownError(cause: String) extends ConfigError
   }
