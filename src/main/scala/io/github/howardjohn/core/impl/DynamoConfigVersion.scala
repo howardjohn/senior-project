@@ -25,21 +25,20 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     scanamo.execRead(Scanamo.versionsTable.get('namespace -> namespace and 'version -> version))
 
   def freeze(): Result[Unit] =
-    EitherT {
-      scanamo
-        .exec {
-          Scanamo.versionsTable.update(
-            'namespace -> namespace and 'version -> version,
-            set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now))
-        }
-        .map(Scanamo.mapErrors)
-        .map(_.map(_ => ()))
-    }
+    scanamo
+      .exec {
+        Scanamo.versionsTable.update(
+          'namespace -> namespace and 'version -> version,
+          set('frozen -> true) and set('auditInfo \ 'modifiedTime -> now))
+      }
+      .map(_ => ())
 
   def write(key: String, value: Json): Result[Unit] =
     condExec {
       table.put(ConfigEntry(key, version, value, AuditInfo.default()))
-    }.map(_.map(_ => ()))
+    }.map(x => x.sequence)
+      .leftMap(Scanamo.mapErrors)
+      .map(_ => ())
 
   def get(key: String): Result[Option[ConfigEntry]] =
     scanamo.execRead(table.get('key -> key and 'version -> version))
@@ -54,22 +53,19 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
     }.map(_ => ())
 
   private def condExec[A](ops: ScanamoOps[A]): Result[A] =
-    EitherT {
-      isFrozen()
-        .map(o => o.fold[Either[ConfigError, Boolean]](Left(ReadError("")))(Right(_)))
-        .flatMap {
-          case Right(true) => IO(Left(FrozenVersion))
-          case Right(false) => scanamo.exec(ops).map(Right(_))
-          case Left(e) => IO(Left(e))
-        }
-    }
+    isFrozen()
+      .map(e => e.map(Right(_)).getOrElse(Left(ReadError("Cold not determine if the tag was frozen"))))
+      .transform(_.joinRight)
+      .flatMap {
+        case true => EitherT.fromEither[IO](Left(FrozenVersion))
+        case false => EitherT.liftF(scanamo.execRaw(ops))
+      }
 
-  private def isFrozen(): IO[Option[Boolean]] =
+  private def isFrozen(): Result[Option[Boolean]] =
     scanamo
-      .exec {
+      .execRead {
         Scanamo.versionsTable.get('namespace -> namespace and 'version -> version)
       }
-      .map(oe => EitherT(oe).fold(_ => None, x => Some(x)).flatten)
       .map(_.map(_.frozen))
 }
 

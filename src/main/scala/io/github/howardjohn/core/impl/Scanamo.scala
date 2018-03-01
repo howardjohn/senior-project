@@ -20,16 +20,21 @@ import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
 class Scanamo(val dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
-  def exec[A](ops: ScanamoOps[A]): IO[A] = IO.fromFuture(IO(ScanamoAsync.exec(dynamo)(ops)))
+  import Scanamo._
+  def execRaw[A](ops: ScanamoOps[A]): IO[A] = IO.fromFuture(IO(ScanamoAsync.exec(dynamo)(ops)))
+
+  def exec[A, E](ops: ScanamoOps[Either[E, A]]): Result[A] =
+    EitherT {
+      execRaw(ops)
+    }.leftMap(mapErrors)
 
   def execRead[A, F[_]: Traverse](ops: ScanamoOps[F[Either[DynamoReadError, A]]]): Result[F[A]] =
     EitherT {
-      exec {
+      execRaw {
         ops
           .map(_.sequence)
       }
-    }.leftMap(e => ReadError(DynamoReadError.describe(e)))
-
+    }.leftMap(mapErrors)
 }
 
 object Scanamo {
@@ -58,7 +63,8 @@ object Scanamo {
     }
   }
 
-  def mapErrors[A, E](result: Either[E, A]): Either[ConfigError, A] = result.left.map {
+  def mapErrors[E](error: E): ConfigError = error match {
+    case e: DynamoReadError => ReadError(DynamoReadError.describe(e))
     case _: ConditionalCheckFailedException => IllegalWrite
     case e => UnknownError(e.toString)
   }

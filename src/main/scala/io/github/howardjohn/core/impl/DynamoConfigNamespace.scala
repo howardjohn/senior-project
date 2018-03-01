@@ -1,6 +1,5 @@
 package io.github.howardjohn.core.impl
 
-import cats.data.EitherT
 import cats.implicits._
 import com.gu.scanamo.syntax._
 import io.github.howardjohn.core._
@@ -21,26 +20,20 @@ class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends Con
     EitherT(scanamo.execRead(Scanamo.tagsTable.query('namespace -> namespace)).value)
 
   def createVersion(version: String): Result[ConfigVersion] =
-    EitherT {
-      scanamo
-        .exec {
-          Scanamo.versionsTable
-            .given(attributeNotExists('namespace) and attributeNotExists('version))
-            .put(VersionEntry(namespace, version, frozen = false, AuditInfo.default()))
-        }
-        .map(Scanamo.mapErrors)
-        .map(_.map(_ => getVersion(version)))
-    }
+    scanamo
+      .exec {
+        Scanamo.versionsTable
+          .given(attributeNotExists('namespace) and attributeNotExists('version))
+          .put(VersionEntry(namespace, version, frozen = false, AuditInfo.default()))
+      }
+      .map(_ => getVersion(version))
 
   def createTag(tag: String, version: String): Result[ConfigTag] =
-    EitherT {
-      scanamo
-        .exec {
-          Scanamo.tagsTable
-            .given(attributeNotExists('namespace) and attributeNotExists('tag))
-            .put(TagEntry(namespace, tag, version, AuditInfo.default()))
-        }
-        .map(Scanamo.mapErrors)
-        .map(_.map(_ => getTag(tag)))
-    }
+    scanamo
+      .exec {
+        Scanamo.tagsTable
+          .given(attributeNotExists('namespace) and attributeNotExists('tag))
+          .put(TagEntry(namespace, tag, version, AuditInfo.default()))
+      }
+      .map(_ => getTag(tag))
 }

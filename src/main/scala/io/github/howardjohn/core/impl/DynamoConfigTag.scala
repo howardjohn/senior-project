@@ -2,7 +2,6 @@ package io.github.howardjohn.core.impl
 
 import java.time.Instant
 
-import cats.data.EitherT
 import cats.implicits._
 import com.gu.scanamo.syntax._
 import io.github.howardjohn.core.{Result, TagEntry}
@@ -15,14 +14,10 @@ class DynamoConfigTag(val namespace: String, val tagName: String, scanamo: Scana
     scanamo.execRead(Scanamo.tagsTable.get('namespace -> namespace and 'tag -> tagName))
 
   def moveTag(version: String): Result[Unit] =
-    EitherT {
-      scanamo
-        .exec {
-          Scanamo.tagsTable.update(
-            'namespace -> namespace and 'tag -> tagName,
-            set('version -> version) and set('auditInfo \ 'modifiedTime -> now))
-        }
-        .map(Scanamo.mapErrors)
-        .map(_.map(_ => ()))
-    }
+    scanamo
+      .exec {
+        Scanamo.tagsTable.update(
+          'namespace -> namespace and 'tag -> tagName,
+          set('version -> version) and set('auditInfo \ 'modifiedTime -> now))
+      }.map(_ => ())
 }
