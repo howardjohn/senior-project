@@ -11,7 +11,7 @@ import com.amazonaws.services.dynamodbv2.model.{AttributeValue, ConditionalCheck
 import com.gu.scanamo.error.{DynamoReadError, TypeCoercionError}
 import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.{DynamoFormat, ScanamoAsync, Table}
-import io.circe.Json
+import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import io.circe.parser.parse
 import io.github.howardjohn.core.ConfigError._
 import io.github.howardjohn.core._
@@ -44,7 +44,6 @@ object Scanamo {
   val tagsTable: Table[TagEntry] = Table[TagEntry](tagsTableName)
 
   def configTable(namespace: String): Table[ConfigEntry] = Table[ConfigEntry](namespace)
-
   implicit val jsonFormat: DynamoFormat[Json] = new DynamoFormat[Json] {
     private val placeholder = "document"
 
@@ -62,6 +61,23 @@ object Scanamo {
       InternalUtils.toAttributeValues(item).get(placeholder)
     }
   }
+
+  implicit def eitherFormat[F: DynamoFormat, S: DynamoFormat]: DynamoFormat[Either[F, S]] =
+    new DynamoFormat[Either[F, S]] {
+      private def firstSuccess[E](fst: => Either[E, F], snd: => Either[E, S]): Either[E, Either[F, S]] =
+        fst match {
+          case Left(e) => snd.map(Right(_))
+          case Right(s) => Right(Left(s))
+        }
+
+      def read(av: AttributeValue): Either[DynamoReadError, Either[F, S]] =
+        firstSuccess(implicitly[DynamoFormat[F]].read(av), implicitly[DynamoFormat[S]].read(av))
+
+      def write(v: Either[F, S]): AttributeValue = v.fold(
+        fst => implicitly[DynamoFormat[F]].write(fst),
+        snd => implicitly[DynamoFormat[S]].write(snd)
+      )
+    }
 
   def mapErrors[E](error: E): ConfigError = error match {
     case e: DynamoReadError => ReadError(DynamoReadError.describe(e))
