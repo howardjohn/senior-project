@@ -24,8 +24,8 @@ package object core {
   )
 
   case class TagEntry(
-    namespace: String,
     tag: String,
+    namespace: String,
     version: String,
     auditInfo: AuditInfo
   )

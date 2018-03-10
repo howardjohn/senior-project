@@ -15,7 +15,6 @@ import org.http4s.headers.Location
 import org.slf4j.LoggerFactory
 
 class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]], encoder: Encoder[ConfigEntry]) {
-
   import Route._
 
   private val log = LoggerFactory.getLogger(classOf[Route[T]])
@@ -32,24 +31,21 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
   }
 
   private val tagService = HttpService[IO] {
-    case req @ POST -> Root / "namespace" / namespace / "tag" =>
+    case req @ POST -> Root / "tag" =>
       translateLocation(for {
         request <- parseJson[CreateTagRequest](req)
-        newTag <- db.getNamespace(namespace).createTag(request.tag, request.version)
-        location <- makeUri(s"/namespace/$namespace/tag/${request.tag}")
+        newTag <- db.createTag(request.tag, request.namespace, request.version)
+        location <- makeUri(s"/tag/${request.tag}")
       } yield location)
-    case GET -> Root / "namespace" / namespace / "tag" =>
-      translateJson(db.getNamespace(namespace).getTags())
-    case req @ PUT -> Root / "namespace" / namespace / "tag" / tag =>
+    case req @ PUT -> Root / "tag" / tag =>
       translateUnit(for {
-        version <- parseJson[MoveTagRequest](req)
+        req <- parseJson[MoveTagRequest](req)
         result <- db
-          .getNamespace(namespace)
           .getTag(tag)
-          .moveTag(version.version)
+          .moveTag(req.namespace, req.version)
       } yield result)
-    case GET -> Root / "namespace" / namespace / "tag" / tag =>
-      translateOptionalJson(db.getNamespace(namespace).getTag(tag).getDetails())
+    case GET -> Root / "tag" / tag / "namespace" / namespace =>
+      translateOptionalJson(db.getTag(tag).getDetails(namespace))
   }
 
   private val versionService = HttpService[IO] {
@@ -102,7 +98,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
         OptionT.liftF {
           translate(
             for {
-              tagEntry <- orNotFound(db.getNamespace(namespace).getTag(tag).getDetails())
+              tagEntry <- orNotFound(db.getTag(tag).getDetails(namespace))
               uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}$rest")
               newReq = req.withUri(uri)
             } yield service.orNotFound(req.withUri(uri))
@@ -166,10 +162,12 @@ object Route {
 
   case class CreateTagRequest(
     tag: String,
+    namespace: String,
     version: String
   )
 
   case class MoveTagRequest(
+    namespace: String,
     version: String
   )
 

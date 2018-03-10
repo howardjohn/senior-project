@@ -4,8 +4,7 @@ import io.github.howardjohn.core.{Result, TagEntry}
 
 trait ConfigTag {
   def tagName: String
-  def namespace: String
 
-  def getDetails(): Result[Option[TagEntry]]
-  def moveTag(version: String): Result[Unit]
+  def getDetails(namespace: String): Result[Option[TagEntry]]
+  def moveTag(namespace: String, version: String): Result[Unit]
 }
