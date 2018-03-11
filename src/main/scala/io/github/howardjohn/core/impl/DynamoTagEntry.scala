@@ -5,11 +5,6 @@ import io.github.howardjohn.core.AuditInfo
 case class DynamoTagEntry(
   tag: String,
   namespace: String,
-  versions: Seq[DynamoTagEntryVersion],
+  versions: Map[String, Int],
   auditInfo: AuditInfo
-)
-
-case class DynamoTagEntryVersion(
-  weight: Int,
-  version: String
 )

@@ -7,5 +7,5 @@ trait ConfigDatastore {
   def getTag(tag: String): ConfigTag
 
   def createNamespace(namespace: String): Result[ConfigNamespace]
-  def createTag(tag: String, namespace: String, version: String): Result[ConfigTag]
+  def createTag(tag: String, namespace: String): Result[ConfigTag]
 }

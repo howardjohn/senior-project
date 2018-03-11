@@ -17,11 +17,11 @@ class DynamoConfigDatastore(scanamo: Scanamo) extends ConfigDatastore {
     throw new RuntimeException("Not implemented")
   }
 
-  def createTag(tag: String, namespace: String, version: String): Result[ConfigTag] =
+  def createTag(tag: String, namespace: String): Result[ConfigTag] =
     scanamo
       .execRead {
         Scanamo.tagsTable
-          .put(DynamoTagEntry(tag, namespace, Seq(DynamoTagEntryVersion(1, version)), AuditInfo.default()))
+          .put(DynamoTagEntry(tag, namespace, Map(), AuditInfo.default()))
       }
       .map(_ => getTag(tag))
 }

@@ -33,12 +33,13 @@ class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
       }
       .map(_.flatMap(entry => asTagEntry(entry, discriminator)))
 
-  def moveTag(namespace: String, version: String): Result[Unit] =
+
+  def moveTag(namespace: String, version: String, weight: Int): Result[Unit] =
     scanamo
       .exec {
         Scanamo.tagsTable.update(
           'tag -> tagName and 'namespace -> namespace,
-          set('version -> version) and set('auditInfo \ 'modifiedTime -> now))
+          set('versions \ Symbol(version) -> weight) and set('auditInfo \ 'modifiedTime -> now))
       }
       .map(_ => ())
 }
@@ -46,25 +47,25 @@ class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
 object DynamoConfigTag {
   def md5(value: String) = MessageDigest.getInstance("MD5").digest(value.getBytes)
 
-  def getVersion(versions: Seq[DynamoTagEntryVersion], hash: Array[Byte]): Option[String] = {
-    val totalWeight = versions.map(_.weight).sum
+  def getVersion(versions: Map[String, Int], hash: Array[Byte]): Option[String] = {
+    val totalWeight = versions.values.sum
     if (totalWeight == 0) {
       None
     } else {
-      val bucket = BigInt(hash) % totalWeight
+      val bucket = BigInt(hash).abs % totalWeight
 
-      def select(curVersions: Seq[DynamoTagEntryVersion], current: Int = 0): Option[String] = curVersions match {
+      def select(curVersions: Seq[(String, Int)], current: Int = 0): Option[String] = curVersions match {
         case hd :: tl => {
-          val newSum = current + hd.weight
+          val newSum = current + hd._2
           if (newSum > bucket) {
-            Some(hd.version)
+            Some(hd._1)
           } else {
             select(tl, newSum)
           }
         }
         case Nil => None
       }
-      select(versions)
+      select(versions.toList)
     }
   }
 
@@ -79,15 +80,19 @@ object DynamoConfigTag {
     }
 
   def asTagEntry(entry: DynamoTagEntry): Either[ConfigError, Option[TagEntry]] =
-    if (entry.versions.length <= 1) {
+    if (entry.versions.size <= 1) {
       Right {
-        entry.versions.headOption.map { v =>
-          TagEntry(
-            entry.tag,
-            entry.namespace,
-            v.version,
-            entry.auditInfo
-          )
+        entry.versions.headOption.flatMap { v =>
+          if (v._2 > 0) {
+            Some(TagEntry(
+              entry.tag,
+              entry.namespace,
+              v._1,
+              entry.auditInfo
+            ))
+          } else {
+            None
+          }
         }
       }
     } else {

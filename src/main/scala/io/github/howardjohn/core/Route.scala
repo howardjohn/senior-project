@@ -36,15 +36,15 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case req @ POST -> Root / "tag" =>
       translateLocation(for {
         request <- parseJson[CreateTagRequest](req)
-        newTag <- db.createTag(request.tag, request.namespace, request.version)
-        location <- makeUri(s"/tag/${request.tag}")
+        newTag <- db.createTag(request.tag, request.namespace)
+        location <- makeUri(s"/tag/${request.tag}/namespace/${request.namespace}")
       } yield location)
-    case req @ PUT -> Root / "tag" / tag =>
+    case req @ PUT -> Root / "tag" / tag / "namespace" / namespace =>
       translateUnit(for {
         req <- parseJson[MoveTagRequest](req)
         result <- db
           .getTag(tag)
-          .moveTag(req.namespace, req.version)
+          .moveTag(namespace, req.version, req.weight)
       } yield result)
     case GET -> Root / "tag" / tag / "namespace" / namespace :? Discriminator(discriminator) =>
       translateOptionalJson(db.getTag(tag).getDetails(namespace, discriminator))
@@ -174,13 +174,12 @@ object Route {
 
   case class CreateTagRequest(
     tag: String,
-    namespace: String,
-    version: String
+    namespace: String
   )
 
   case class MoveTagRequest(
-    namespace: String,
-    version: String
+    version: String,
+    weight: Int
   )
 
   case class CreateVersionRequest(
