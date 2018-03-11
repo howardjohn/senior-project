@@ -94,12 +94,12 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
 
   def tagAsVersionMiddleware(service: HttpService[IO]): HttpService[IO] = Kleisli { req: Request[IO] =>
     req match {
-      case _ -> "namespace" /: namespace /: "tag" /: tag /: rest =>
+      case _ -> "namespace" /: namespace /: "tag" /: tag /: "config" /: rest =>
         OptionT.liftF {
           translate(
             for {
               tagEntry <- orNotFound(db.getTag(tag).getDetails(namespace))
-              uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}$rest")
+              uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}/config$rest")
               newReq = req.withUri(uri)
             } yield service.orNotFound(req.withUri(uri))
           )(identity)

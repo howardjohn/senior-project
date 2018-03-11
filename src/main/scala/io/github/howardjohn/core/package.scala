@@ -41,6 +41,8 @@ package object core {
     case object IllegalWrite extends ConfigError
     case object FrozenVersion extends ConfigError
     case object MissingEntry extends ConfigError
+    case object MissingDiscriminator extends ConfigError
+    case object ExtraDiscriminator extends ConfigError
     case class ReadError(cause: String) extends ConfigError
     case class UnknownError(cause: String) extends ConfigError
   }

@@ -28,7 +28,7 @@ class Scanamo(val dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
       execRaw(ops)
     }.leftMap(mapErrors)
 
-  def execRead[A, F[_]: Traverse](ops: ScanamoOps[F[Either[DynamoReadError, A]]]): Result[F[A]] =
+  def execRead[A, F[_]: Traverse, E](ops: ScanamoOps[F[Either[E, A]]]): Result[F[A]] =
     EitherT {
       execRaw {
         ops
@@ -41,9 +41,10 @@ object Scanamo {
   val versionsTableName = "Versions"
   val versionsTable: Table[VersionEntry] = Table[VersionEntry](versionsTableName)
   val tagsTableName = "Tags"
-  val tagsTable: Table[TagEntry] = Table[TagEntry](tagsTableName)
+  val tagsTable: Table[DynamoTagEntry] = Table[DynamoTagEntry](tagsTableName)
 
   def configTable(namespace: String): Table[ConfigEntry] = Table[ConfigEntry](namespace)
+
   implicit val jsonFormat: DynamoFormat[Json] = new DynamoFormat[Json] {
     private val placeholder = "document"
 
@@ -61,23 +62,6 @@ object Scanamo {
       InternalUtils.toAttributeValues(item).get(placeholder)
     }
   }
-
-  implicit def eitherFormat[F: DynamoFormat, S: DynamoFormat]: DynamoFormat[Either[F, S]] =
-    new DynamoFormat[Either[F, S]] {
-      private def firstSuccess[E](fst: => Either[E, F], snd: => Either[E, S]): Either[E, Either[F, S]] =
-        fst match {
-          case Left(e) => snd.map(Right(_))
-          case Right(s) => Right(Left(s))
-        }
-
-      def read(av: AttributeValue): Either[DynamoReadError, Either[F, S]] =
-        firstSuccess(implicitly[DynamoFormat[F]].read(av), implicitly[DynamoFormat[S]].read(av))
-
-      def write(v: Either[F, S]): AttributeValue = v.fold(
-        fst => implicitly[DynamoFormat[F]].write(fst),
-        snd => implicitly[DynamoFormat[S]].write(snd)
-      )
-    }
 
   def mapErrors[E](error: E): ConfigError = error match {
     case e: DynamoReadError => ReadError(DynamoReadError.describe(e))

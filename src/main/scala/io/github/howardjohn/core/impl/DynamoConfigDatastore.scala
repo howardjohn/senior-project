@@ -21,7 +21,7 @@ class DynamoConfigDatastore(scanamo: Scanamo) extends ConfigDatastore {
     scanamo
       .execRead {
         Scanamo.tagsTable
-          .put(TagEntry(tag, namespace, version, AuditInfo.default()))
+          .put(DynamoTagEntry(tag, namespace, Seq(DynamoTagEntryVersion(1, version)), AuditInfo.default()))
       }
       .map(_ => getTag(tag))
 }
