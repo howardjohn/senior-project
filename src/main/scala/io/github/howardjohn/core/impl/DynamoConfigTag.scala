@@ -1,9 +1,9 @@
 package io.github.howardjohn.core.impl
 
+import java.security.MessageDigest
 import java.time.Instant
 
 import cats.implicits._
-import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.syntax._
 import io.github.howardjohn.core.ConfigError.MissingDiscriminator
 import io.github.howardjohn.core.{ConfigError, Result, TagEntry}
@@ -44,17 +44,39 @@ class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
 }
 
 object DynamoConfigTag {
-  def asTagEntry(entry: DynamoTagEntry, discriminator: String): Option[TagEntry] = {
-    entry.versions.headOption.map {
-      ver =>
-        TagEntry(
-          entry.tag,
-          entry.namespace,
-          ver.version,
-          entry.auditInfo
-        )
+  def md5(value: String) = MessageDigest.getInstance("MD5").digest(value.getBytes)
+
+  def getVersion(versions: Seq[DynamoTagEntryVersion], hash: Array[Byte]): Option[String] = {
+    val totalWeight = versions.map(_.weight).sum
+    if (totalWeight == 0) {
+      None
+    } else {
+      val bucket = BigInt(hash) % totalWeight
+
+      def select(curVersions: Seq[DynamoTagEntryVersion], current: Int = 0): Option[String] = curVersions match {
+        case hd :: tl => {
+          val newSum = current + hd.weight
+          if (newSum > bucket) {
+            Some(hd.version)
+          } else {
+            select(tl, newSum)
+          }
+        }
+        case Nil => None
+      }
+      select(versions)
     }
   }
+
+  def asTagEntry(entry: DynamoTagEntry, discriminator: String): Option[TagEntry] =
+    getVersion(entry.versions, md5(discriminator)).map { ver =>
+      TagEntry(
+        entry.tag,
+        entry.namespace,
+        ver,
+        entry.auditInfo
+      )
+    }
 
   def asTagEntry(entry: DynamoTagEntry): Either[ConfigError, Option[TagEntry]] =
     if (entry.versions.length <= 1) {

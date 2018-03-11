@@ -15,6 +15,7 @@ import org.http4s.headers.Location
 import org.slf4j.LoggerFactory
 
 class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]], encoder: Encoder[ConfigEntry]) {
+
   import Route._
 
   private val log = LoggerFactory.getLogger(classOf[Route[T]])
@@ -30,6 +31,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
       translateJson(db.getNamespace(namespace).getVersions())
   }
 
+  object Discriminator extends QueryParamDecoderMatcher[String]("discriminator")
   private val tagService = HttpService[IO] {
     case req @ POST -> Root / "tag" =>
       translateLocation(for {
@@ -44,6 +46,8 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
           .getTag(tag)
           .moveTag(req.namespace, req.version)
       } yield result)
+    case GET -> Root / "tag" / tag / "namespace" / namespace :? Discriminator(discriminator) =>
+      translateOptionalJson(db.getTag(tag).getDetails(namespace, discriminator))
     case GET -> Root / "tag" / tag / "namespace" / namespace =>
       translateOptionalJson(db.getTag(tag).getDetails(namespace))
   }
@@ -94,13 +98,21 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
 
   def tagAsVersionMiddleware(service: HttpService[IO]): HttpService[IO] = Kleisli { req: Request[IO] =>
     req match {
+      case _ -> "namespace" /: namespace /: "tag" /: tag /: "config" /: rest :? Discriminator(discriminator) =>
+        OptionT.liftF {
+          translate(
+            for {
+              tagEntry <- orNotFound(db.getTag(tag).getDetails(namespace, discriminator))
+              uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}/config$rest")
+            } yield service.orNotFound(req.withUri(uri))
+          )(identity)
+        }
       case _ -> "namespace" /: namespace /: "tag" /: tag /: "config" /: rest =>
         OptionT.liftF {
           translate(
             for {
               tagEntry <- orNotFound(db.getTag(tag).getDetails(namespace))
               uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}/config$rest")
-              newReq = req.withUri(uri)
             } yield service.orNotFound(req.withUri(uri))
           )(identity)
         }
