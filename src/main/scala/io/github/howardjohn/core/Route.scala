@@ -41,10 +41,10 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
       } yield location)
     case req @ PUT -> Root / "tag" / tag / "namespace" / namespace =>
       translateUnit(for {
-        req <- parseJson[MoveTagRequest](req)
+        req <- parseJson[Map[String, Int]](req)
         result <- db
           .getTag(tag)
-          .moveTag(namespace, req.version, req.weight)
+          .moveTag(namespace, req)
       } yield result)
     case GET -> Root / "tag" / tag / "namespace" / namespace :? Discriminator(discriminator) =>
       translateOptionalJson(db.getTag(tag).getDetails(namespace, discriminator))

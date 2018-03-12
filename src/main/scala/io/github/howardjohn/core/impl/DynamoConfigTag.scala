@@ -33,13 +33,20 @@ class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
       }
       .map(_.flatMap(entry => asTagEntry(entry, discriminator)))
 
-
-  def moveTag(namespace: String, version: String, weight: Int): Result[Unit] =
+  def moveTag(namespace: String, versions: Map[String, Int]): Result[Unit] =
     scanamo
       .exec {
         Scanamo.tagsTable.update(
           'tag -> tagName and 'namespace -> namespace,
-          set('versions \ Symbol(version) -> weight) and set('auditInfo \ 'modifiedTime -> now))
+          versions.toSeq.foldLeft(set('auditInfo \ 'modifiedTime -> now)) {
+            case (ops, (ver, weight)) =>
+              if (weight > 0) {
+                ops and set('versions \ Symbol(ver) -> weight)
+              } else {
+                ops and remove('versions \ Symbol(ver))
+              }
+          }
+        )
       }
       .map(_ => ())
 }
@@ -84,12 +91,13 @@ object DynamoConfigTag {
       Right {
         entry.versions.headOption.flatMap { v =>
           if (v._2 > 0) {
-            Some(TagEntry(
-              entry.tag,
-              entry.namespace,
-              v._1,
-              entry.auditInfo
-            ))
+            Some(
+              TagEntry(
+                entry.tag,
+                entry.namespace,
+                v._1,
+                entry.auditInfo
+              ))
           } else {
             None
           }
