@@ -1,4 +1,4 @@
-package io.github.howardjohn.core.impl
+package io.github.howardjohn.backend.impl
 
 import java.time.Instant
 
@@ -8,9 +8,9 @@ import cats.implicits._
 import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.syntax._
 import io.circe.Json
-import io.github.howardjohn.core.ConfigError._
-import io.github.howardjohn.core._
-import io.github.howardjohn.core.config.ConfigVersion
+import io.github.howardjohn.backend.ConfigError._
+import io.github.howardjohn.backend._
+import io.github.howardjohn.backend.config.ConfigVersion
 
 class DynamoConfigVersion(val namespace: String, val version: String, scanamo: Scanamo) extends ConfigVersion {
   import DynamoConfigVersion._

@@ -1,6 +1,6 @@
-package io.github.howardjohn.core.config
+package io.github.howardjohn.backend.config
 
-import io.github.howardjohn.core.Result
+import io.github.howardjohn.backend.Result
 
 trait ConfigDatastore {
   def getNamespace(namespace: String): ConfigNamespace

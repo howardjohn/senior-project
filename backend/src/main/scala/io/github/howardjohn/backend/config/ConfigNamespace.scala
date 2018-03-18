@@ -1,6 +1,6 @@
-package io.github.howardjohn.core.config
+package io.github.howardjohn.backend.config
 
-import io.github.howardjohn.core.{Result, VersionEntry}
+import io.github.howardjohn.backend.{Result, VersionEntry}
 
 trait ConfigNamespace {
   def namespace: String

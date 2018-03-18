@@ -1,9 +1,9 @@
-package io.github.howardjohn.core.impl
+package io.github.howardjohn.backend.impl
 
 import cats.data.EitherT
 import cats.implicits._
-import io.github.howardjohn.core._
-import io.github.howardjohn.core.config.{ConfigDatastore, ConfigNamespace, ConfigTag}
+import io.github.howardjohn.backend._
+import io.github.howardjohn.backend.config.{ConfigDatastore, ConfigNamespace, ConfigTag}
 
 class DynamoConfigDatastore(scanamo: Scanamo) extends ConfigDatastore {
 

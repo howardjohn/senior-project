@@ -1,10 +1,10 @@
-package io.github.howardjohn.core.impl
+package io.github.howardjohn.backend.impl
 
 import cats.data.EitherT
 import cats.implicits._
 import com.gu.scanamo.syntax._
-import io.github.howardjohn.core._
-import io.github.howardjohn.core.config.{ConfigNamespace, ConfigTag, ConfigVersion}
+import io.github.howardjohn.backend._
+import io.github.howardjohn.backend.config.{ConfigNamespace, ConfigTag, ConfigVersion}
 
 class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends ConfigNamespace {
 

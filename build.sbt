@@ -3,6 +3,10 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.4"
 )
 
+lazy val root = project
+  .in(file("."))
+  .aggregate(clientJS, clientJVM)
+
 lazy val backend = project
   .in(file("backend"))
   .settings(commonSettings)
@@ -27,18 +31,27 @@ lazy val backend = project
     }
   )
 
-lazy val client = project
-.in(file("client"))
-.settings(commonSettings)
-.settings(
-  moduleName := "backend",
-  scalacOptions ++= Seq("-Ypartial-unification"),
-  libraryDependencies ++= {
-    val CirceVersion = "0.9.2"
-    Seq(
-      "com.pepegar" %%% "hammock-core" % "0.8.1",
-      "org.scalatest" %% "scalatest" % "3.0.4" % "test"
-    )
-  }
-)
+lazy val client = crossProject
+  .in(file("client"))
+  .settings(commonSettings)
+  .settings(
+    name := "client",
+    moduleName := "client",
+    scalacOptions ++= Seq("-Ypartial-unification"),
+    libraryDependencies ++= {
+      val CirceVersion = "0.9.2"
+      val ScalaJSVersion = "1.0.0-M3"
+      Seq(
+        "org.scala-js" %% "scalajs-stubs" % ScalaJSVersion % "provided",
+        "com.pepegar" %%% "hammock-core" % "0.8.1",
+        "org.scalatest" %%% "scalatest" % "3.0.4" % "test"
+      )
+    }
+  )
+  .jsSettings(
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
+  )
+  .jvmSettings()
 
+lazy val clientJVM = client.jvm
+lazy val clientJS = client.js

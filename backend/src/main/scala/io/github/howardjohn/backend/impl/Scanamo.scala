@@ -1,4 +1,4 @@
-package io.github.howardjohn.core.impl
+package io.github.howardjohn.backend.impl
 
 import cats.Traverse
 import cats.data.EitherT
@@ -13,8 +13,8 @@ import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.{DynamoFormat, ScanamoAsync, Table}
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import io.circe.parser.parse
-import io.github.howardjohn.core.ConfigError._
-import io.github.howardjohn.core._
+import io.github.howardjohn.backend.ConfigError._
+import io.github.howardjohn.backend._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext

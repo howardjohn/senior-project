@@ -1,4 +1,4 @@
-package io.github.howardjohn.core
+package io.github.howardjohn.backend
 
 import cats.data.{EitherT, Kleisli, OptionT}
 import cats.effect._
@@ -6,8 +6,8 @@ import cats.implicits._
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
-import io.github.howardjohn.core.ConfigError._
-import io.github.howardjohn.core.config.ConfigDatastore
+import io.github.howardjohn.backend.ConfigError._
+import io.github.howardjohn.backend.config.ConfigDatastore
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._

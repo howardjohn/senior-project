@@ -6,7 +6,7 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.circe.Json
 
-package object core {
+package object backend {
   type Result[A] = EitherT[IO, ConfigError, A]
 
   case class ConfigEntry(

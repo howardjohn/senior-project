@@ -1,7 +1,7 @@
-package io.github.howardjohn.core.config
+package io.github.howardjohn.backend.config
 
 import io.circe.Json
-import io.github.howardjohn.core.{ConfigEntry, Result, VersionEntry}
+import io.github.howardjohn.backend.{ConfigEntry, Result, VersionEntry}
 
 trait ConfigVersion {
   def version: String
