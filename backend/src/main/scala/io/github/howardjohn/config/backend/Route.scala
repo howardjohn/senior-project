@@ -6,6 +6,7 @@ import cats.implicits._
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
+import io.circe.parser.decode
 import io.github.howardjohn.config.ConfigError._
 import io.github.howardjohn.config._
 import io.github.howardjohn.config.backend.impl.DynamoConfigDatastore
@@ -73,7 +74,7 @@ class Route[T](db: DynamoConfigDatastore)(
             .getVersion(version)
             .freeze()
         } else {
-          EitherT.leftT[IO, Unit](FrozenVersion: ConfigError)
+          EitherT.leftT[IO, Unit](IllegalWrite("Version is already frozen"): ConfigError)
         }
       } yield result)
   }
@@ -143,19 +144,25 @@ class Route[T](db: DynamoConfigDatastore)(
     translate(resp)(_ => Ok(""))
 
   private def parseJson[A: Decoder](req: Request[IO]): Result[A] =
-    EitherT.liftF[IO, ConfigError, A](req.decodeJson[A])
+    EitherT {
+      req.as[String].map { data =>
+        decode[A](data).left.map(e => MissingField(e.getMessage))
+      }
+    }
 
   private def processError(err: ConfigError): IO[Response[IO]] =
     err match {
-      case FrozenVersion => MethodNotAllowed()
-      case MissingEntry => NotFound()
-      case _ => IO(log.error(s"Error encountered: $err")).flatMap(_ => InternalServerError())
+      case InvalidTag => NotFound()
+      case IllegalWrite(msg) => MethodNotAllowed(ErrorMessage("IllegalWrite", msg).asJson)
+      case MissingField(msg) => BadRequest(ErrorMessage("MissingField", msg).asJson)
+      case UnknownError(msg) => InternalServerError(ErrorMessage("UnknownError", msg).asJson)
+      case ReadError(msg) => InternalServerError(ErrorMessage("ReadError", msg).asJson)
     }
 
   private def orNotFound[A](item: Result[Option[A]]): Result[A] = EitherT {
     item.value.map {
       case Right(Some(value)) => Right(value)
-      case Right(None) => Left(MissingEntry)
+      case Right(None) => Left(InvalidTag)
       case Left(error) => Left(error)
     }
   }
@@ -172,6 +179,11 @@ class Route[T](db: DynamoConfigDatastore)(
 }
 
 object Route {
+  case class ErrorMessage(
+    error: String,
+    details: String
+  )
+
   case class CreateNamespaceRequest(
     namespace: String
   )

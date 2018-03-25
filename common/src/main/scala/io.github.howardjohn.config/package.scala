@@ -43,11 +43,9 @@ package object config {
 
   sealed trait ConfigError
   object ConfigError {
-    case object IllegalWrite extends ConfigError
-    case object FrozenVersion extends ConfigError
-    case object MissingEntry extends ConfigError
-    case object MissingDiscriminator extends ConfigError
-    case object ExtraDiscriminator extends ConfigError
+    case object InvalidTag extends ConfigError
+    case class IllegalWrite(cause: String) extends ConfigError
+    case class MissingField(cause: String) extends ConfigError
     case class ReadError(cause: String) extends ConfigError
     case class UnknownError(cause: String) extends ConfigError
   }

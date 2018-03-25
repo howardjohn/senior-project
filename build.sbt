@@ -16,9 +16,6 @@ lazy val common = project
       val CirceVersion = "0.9.2"
       Seq(
         "org.typelevel" %%% "cats-effect" % "0.10",
-//        "io.circe" %% "circe-core" % CirceVersion,
-//        "io.circe" %% "circe-generic" % CirceVersion,
-//        "io.circe" %% "circe-parser" % CirceVersion,
         "org.scalatest" %% "scalatest" % "3.0.4" % "test"
       )
     }
@@ -40,6 +37,7 @@ lazy val backend = project
         "io.github.howardjohn" %% "http4s-lambda" % "0.2.0-SNAPSHOT",
         "org.http4s" %% "http4s-dsl" % Http4sVersion,
         "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
+        "io.circe" %% "circe-parser" % CirceVersion,
         "org.slf4j" % "slf4j-simple" % "1.7.25" % Runtime,
         "com.gu" %% "scanamo" % "1.0.0-M3",
         "org.log4s" %% "log4s" % "1.4.0",

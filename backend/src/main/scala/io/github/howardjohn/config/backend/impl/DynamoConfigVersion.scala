@@ -56,7 +56,7 @@ class DynamoConfigVersion[T: DynamoFormat](val namespace: String, val version: S
       .map(e => e.map(Right(_)).getOrElse(Left(ReadError("Could not determine if the tag was frozen"))))
       .transform(_.joinRight)
       .flatMap {
-        case true => EitherT.fromEither[IO](Left(FrozenVersion))
+        case true => EitherT.fromEither[IO](Left(IllegalWrite("Cannot write to a frozen version.")))
         case false => EitherT.liftF(scanamo.execRaw(ops))
       }
 

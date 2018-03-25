@@ -5,7 +5,7 @@ import java.time.Instant
 
 import cats.implicits._
 import com.gu.scanamo.syntax._
-import io.github.howardjohn.config.ConfigError.MissingDiscriminator
+import io.github.howardjohn.config.ConfigError.MissingField
 import io.github.howardjohn.config._
 import io.github.howardjohn.config.ConfigTag
 
@@ -104,6 +104,6 @@ object DynamoConfigTag {
         }
       }
     } else {
-      Left(MissingDiscriminator)
+      Left(MissingField("Required a discriminator"))
     }
 }

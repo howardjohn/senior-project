@@ -65,7 +65,7 @@ object Scanamo {
 
   def mapErrors[E](error: E): ConfigError = error match {
     case e: DynamoReadError => ReadError(DynamoReadError.describe(e))
-    case _: ConditionalCheckFailedException => IllegalWrite
+    case e: ConditionalCheckFailedException => IllegalWrite(e.getMessage)
     case e => UnknownError(e.toString)
   }
 }
