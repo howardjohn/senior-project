@@ -1,4 +1,4 @@
-package io.github.howardjohn.backend
+package io.github.howardjohn.config.backend
 
 import cats.data.{EitherT, Kleisli, OptionT}
 import cats.effect._
@@ -6,15 +6,19 @@ import cats.implicits._
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
-import io.github.howardjohn.backend.ConfigError._
-import io.github.howardjohn.backend.config.ConfigDatastore
+import io.github.howardjohn.config.ConfigError._
+import io.github.howardjohn.config._
+import io.github.howardjohn.config.backend.impl.DynamoConfigDatastore
+import io.github.howardjohn.config.backend.impl.Scanamo.jsonFormat
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.headers.Location
 import org.slf4j.LoggerFactory
 
-class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]], encoder: Encoder[ConfigEntry]) {
+class Route[T](db: DynamoConfigDatastore)(
+  implicit encoders: Encoder[Seq[ConfigEntry[Json]]],
+  encoder: Encoder[ConfigEntry[Json]]) {
 
   import Route._
 
@@ -24,11 +28,11 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case req @ POST -> Root / "namespace" =>
       translateLocation(for {
         request <- parseJson[CreateNamespaceRequest](req)
-        newName <- db.createNamespace(request.namespace)
+        _ <- db.createNamespace[Json](request.namespace)
         location <- makeUri(s"/namespace/${request.namespace}")
       } yield location)
     case GET -> Root / "namespace" / namespace =>
-      translateJson(db.getNamespace(namespace).getVersions())
+      translateJson(db.getNamespace[Json](namespace).getVersions())
   }
 
   object Discriminator extends QueryParamDecoderMatcher[String]("discriminator")
@@ -56,7 +60,7 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
     case req @ POST -> Root / "namespace" / namespace / "version" =>
       translateLocation(for {
         request <- parseJson[CreateVersionRequest](req)
-        newVersion <- db.getNamespace(namespace).createVersion(request.version)
+        _ <- db.getNamespace[Json](namespace).createVersion(request.version)
         location <- makeUri(s"/namespace/$namespace/version/${request.version}")
       } yield location)
     case GET -> Root / "namespace" / namespace / "version" / version =>
@@ -85,11 +89,11 @@ class Route[T](db: ConfigDatastore)(implicit encoders: Encoder[Seq[ConfigEntry]]
           .write(entry.key, entry.value)
       } yield location)
     case GET -> Root / "namespace" / namespace / "version" / version / "config" =>
-      translateJson(db.getNamespace(namespace).getVersion(version).getAll())
+      translateJson(db.getNamespace[Json](namespace).getVersion(version).getAll())
     case GET -> Root / "namespace" / namespace / "version" / version / "config" / key =>
-      translateOptionalJson(db.getNamespace(namespace).getVersion(version).get(key))
+      translateOptionalJson(db.getNamespace[Json](namespace).getVersion(version).get(key))
     case DELETE -> Root / "namespace" / namespace / "version" / version / "config" / key =>
-      translateUnit(db.getNamespace(namespace).getVersion(version).delete(key))
+      translateUnit(db.getNamespace[Json](namespace).getVersion(version).delete(key))
   }
 
   private val pingService = HttpService[IO] {

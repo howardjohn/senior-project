@@ -1,11 +1,11 @@
-package io.github.howardjohn.backend
+package io.github.howardjohn.config.backend
 
 import cats.effect.IO
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import fs2.StreamApp
 import io.circe.generic.auto._
-import io.github.howardjohn.backend.impl.{DynamoConfigDatastore, Scanamo}
+import io.github.howardjohn.config.backend.impl.{DynamoConfigDatastore, Scanamo}
 import org.http4s.server.blaze.BlazeBuilder
 
 object Server extends StreamApp[IO] {

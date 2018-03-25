@@ -1,6 +1,6 @@
-package io.github.howardjohn.backend.impl
+package io.github.howardjohn.config.backend.impl
 
-import io.github.howardjohn.backend.AuditInfo
+import io.github.howardjohn.config.AuditInfo
 
 case class DynamoTagEntry(
   tag: String,

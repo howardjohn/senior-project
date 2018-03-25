@@ -4,15 +4,14 @@ import java.time.Instant
 
 import cats.data.EitherT
 import cats.effect.IO
-import io.circe.Json
 
-package object backend {
+package object config {
   type Result[A] = EitherT[IO, ConfigError, A]
 
-  case class ConfigEntry(
+  case class ConfigEntry[T](
     key: String,
     version: String,
-    value: Json,
+    value: T,
     auditInfo: AuditInfo
   )
 
@@ -35,8 +34,14 @@ package object backend {
     modifiedTime: Option[Long] = None
   )
 
-  sealed trait ConfigError
+  object AuditInfo {
+    def default(getNow: => Long = Instant.now.toEpochMilli): AuditInfo = {
+      val now = getNow
+      AuditInfo(Some(now), Some(now))
+    }
+  }
 
+  sealed trait ConfigError
   object ConfigError {
     case object IllegalWrite extends ConfigError
     case object FrozenVersion extends ConfigError
@@ -45,13 +50,5 @@ package object backend {
     case object ExtraDiscriminator extends ConfigError
     case class ReadError(cause: String) extends ConfigError
     case class UnknownError(cause: String) extends ConfigError
-  }
-
-  object AuditInfo {
-
-    def default(getNow: => Long = Instant.now.toEpochMilli): AuditInfo = {
-      val now = getNow
-      AuditInfo(Some(now), Some(now))
-    }
   }
 }

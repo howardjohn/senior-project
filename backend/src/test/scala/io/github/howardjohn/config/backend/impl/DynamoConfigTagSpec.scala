@@ -1,4 +1,4 @@
-package io.github.howardjohn.backend.impl
+package io.github.howardjohn.config.backend.impl
 
 import org.scalactic.TolerantNumerics
 import org.scalatest._

@@ -1,6 +1,4 @@
-package io.github.howardjohn.backend.config
-
-import io.github.howardjohn.backend.{Result, TagEntry}
+package io.github.howardjohn.config
 
 trait ConfigTag {
   def tagName: String

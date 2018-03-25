@@ -1,24 +1,23 @@
-package io.github.howardjohn.backend.impl
+package io.github.howardjohn.config.backend.impl
 
 import java.time.Instant
 
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits._
+import com.gu.scanamo.DynamoFormat
 import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.syntax._
-import io.circe.Json
-import io.github.howardjohn.backend.ConfigError._
-import io.github.howardjohn.backend._
-import io.github.howardjohn.backend.config.ConfigVersion
+import io.github.howardjohn.config._
+import io.github.howardjohn.config.ConfigError._
 
-class DynamoConfigVersion(val namespace: String, val version: String, scanamo: Scanamo) extends ConfigVersion {
+class DynamoConfigVersion[T: DynamoFormat](val namespace: String, val version: String, scanamo: Scanamo) extends ConfigVersion[T] {
   import DynamoConfigVersion._
 
-  val table = Scanamo.configTable(namespace)
+  val table = Scanamo.configTable[T](namespace)
   private def now = Instant.now.toEpochMilli
 
-  def cloneVersion(newVersionName: String): Result[ConfigVersion] =
+  def cloneVersion(newVersionName: String): Result[ConfigVersion[T]] =
     throw new RuntimeException("Not implemented yet")
 
   def details(): Result[Option[VersionEntry]] =
@@ -33,17 +32,17 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
       }
       .map(_ => ())
 
-  def write(key: String, value: Json): Result[Unit] =
+  def write(key: String, value: T): Result[Unit] =
     condExec {
-      table.put(ConfigEntry(key, version, value, AuditInfo.default()))
+      table.put(ConfigEntry[T](key, version, value, AuditInfo.default()))
     }.map(x => x.sequence)
       .leftMap(Scanamo.mapErrors)
       .map(_ => ())
 
-  def get(key: String): Result[Option[ConfigEntry]] =
+  def get(key: String): Result[Option[ConfigEntry[T]]] =
     scanamo.execRead(table.get('key -> key and 'version -> version))
 
-  def getAll(): Result[Seq[ConfigEntry]] =
+  def getAll(): Result[Seq[ConfigEntry[T]]] =
     EitherT(scanamo.execRead(table.index(versionIndex).query('version -> version)).value)
 
   def delete(key: String): Result[Unit] =
@@ -54,7 +53,7 @@ class DynamoConfigVersion(val namespace: String, val version: String, scanamo: S
 
   private def condExec[A](ops: ScanamoOps[A]): Result[A] =
     isFrozen()
-      .map(e => e.map(Right(_)).getOrElse(Left(ReadError("Cold not determine if the tag was frozen"))))
+      .map(e => e.map(Right(_)).getOrElse(Left(ReadError("Could not determine if the tag was frozen"))))
       .transform(_.joinRight)
       .flatMap {
         case true => EitherT.fromEither[IO](Left(FrozenVersion))

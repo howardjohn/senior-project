@@ -1,13 +1,13 @@
-package io.github.howardjohn.backend.impl
+package io.github.howardjohn.config.backend.impl
 
 import java.security.MessageDigest
 import java.time.Instant
 
 import cats.implicits._
 import com.gu.scanamo.syntax._
-import io.github.howardjohn.backend.ConfigError.MissingDiscriminator
-import io.github.howardjohn.backend.{ConfigError, Result, TagEntry}
-import io.github.howardjohn.backend.config.ConfigTag
+import io.github.howardjohn.config.ConfigError.MissingDiscriminator
+import io.github.howardjohn.config._
+import io.github.howardjohn.config.ConfigTag
 
 class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
   import DynamoConfigTag._

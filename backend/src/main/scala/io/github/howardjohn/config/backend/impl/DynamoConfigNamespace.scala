@@ -1,20 +1,20 @@
-package io.github.howardjohn.backend.impl
+package io.github.howardjohn.config.backend.impl
 
 import cats.data.EitherT
 import cats.implicits._
+import com.gu.scanamo.DynamoFormat
 import com.gu.scanamo.syntax._
-import io.github.howardjohn.backend._
-import io.github.howardjohn.backend.config.{ConfigNamespace, ConfigTag, ConfigVersion}
+import io.github.howardjohn.config._
 
-class DynamoConfigNamespace(val namespace: String, scanamo: Scanamo) extends ConfigNamespace {
+class DynamoConfigNamespace[T: DynamoFormat](val namespace: String, scanamo: Scanamo) extends ConfigNamespace[T] {
 
-  def getVersion(version: String): ConfigVersion =
-    new DynamoConfigVersion(namespace, version, scanamo)
+  def getVersion(version: String): ConfigVersion[T] =
+    new DynamoConfigVersion[T](namespace, version, scanamo)
 
   def getVersions(): Result[Seq[VersionEntry]] =
     EitherT(scanamo.execRead(Scanamo.versionsTable.query('namespace -> namespace)).value)
 
-  def createVersion(version: String): Result[ConfigVersion] =
+  def createVersion(version: String): Result[ConfigVersion[T]] =
     scanamo
       .exec {
         Scanamo.versionsTable

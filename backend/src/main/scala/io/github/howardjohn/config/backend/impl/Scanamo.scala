@@ -1,4 +1,4 @@
-package io.github.howardjohn.backend.impl
+package io.github.howardjohn.config.backend.impl
 
 import cats.Traverse
 import cats.data.EitherT
@@ -11,10 +11,10 @@ import com.amazonaws.services.dynamodbv2.model.{AttributeValue, ConditionalCheck
 import com.gu.scanamo.error.{DynamoReadError, TypeCoercionError}
 import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.{DynamoFormat, ScanamoAsync, Table}
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import io.circe.Json
 import io.circe.parser.parse
-import io.github.howardjohn.backend.ConfigError._
-import io.github.howardjohn.backend._
+import io.github.howardjohn.config.{ConfigEntry, ConfigError, Result, VersionEntry}
+import io.github.howardjohn.config.ConfigError._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
@@ -43,7 +43,7 @@ object Scanamo {
   val tagsTableName = "Tags"
   val tagsTable: Table[DynamoTagEntry] = Table[DynamoTagEntry](tagsTableName)
 
-  def configTable(namespace: String): Table[ConfigEntry] = Table[ConfigEntry](namespace)
+  def configTable[T: DynamoFormat](namespace: String): Table[ConfigEntry[T]] = Table[ConfigEntry[T]](namespace)
 
   implicit val jsonFormat: DynamoFormat[Json] = new DynamoFormat[Json] {
     private val placeholder = "document"

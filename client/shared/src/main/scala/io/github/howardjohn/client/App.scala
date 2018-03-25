@@ -1,9 +1,9 @@
 package io.github.howardjohn.client
 
-import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
+trait ConfigDatastore {
+  def getNamespace(namespace: String): ConfigNamespace
+  def getTag(tag: String): ConfigTag
 
-@JSExportTopLevel("App")
-class App {
-  @JSExport
-  def get(): String = "Hello JS!"
+  def createNamespace(namespace: String): Result[ConfigNamespace]
+  def createTag(tag: String, namespace: String): Result[ConfigTag]
 }

@@ -7,6 +7,23 @@ lazy val root = project
   .in(file("."))
   .aggregate(clientJS, clientJVM)
 
+lazy val common = project
+  .in(file("common"))
+  .settings(commonSettings)
+  .settings(
+    moduleName := "common",
+    libraryDependencies ++= {
+      val CirceVersion = "0.9.2"
+      Seq(
+        "org.typelevel" %%% "cats-effect" % "0.10",
+//        "io.circe" %% "circe-core" % CirceVersion,
+//        "io.circe" %% "circe-generic" % CirceVersion,
+//        "io.circe" %% "circe-parser" % CirceVersion,
+        "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+      )
+    }
+  )
+
 lazy val backend = project
   .in(file("backend"))
   .settings(commonSettings)
@@ -30,6 +47,7 @@ lazy val backend = project
       )
     }
   )
+  .dependsOn(common)
 
 lazy val client = crossProject
   .in(file("client"))
@@ -42,6 +60,7 @@ lazy val client = crossProject
       val CirceVersion = "0.9.2"
       val ScalaJSVersion = "1.0.0-M3"
       Seq(
+        "org.typelevel" %%% "cats-effect" % "0.10",
         "org.scala-js" %% "scalajs-stubs" % ScalaJSVersion % "provided",
         "com.pepegar" %%% "hammock-core" % "0.8.1",
         "org.scalatest" %%% "scalatest" % "3.0.4" % "test"
@@ -53,5 +72,5 @@ lazy val client = crossProject
   )
   .jvmSettings()
 
-lazy val clientJVM = client.jvm
-lazy val clientJS = client.js
+lazy val clientJVM = client.jvm.dependsOn(common)
+lazy val clientJS = client.js.dependsOn(common)
