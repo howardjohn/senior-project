@@ -61,6 +61,7 @@ lazy val client = crossProject
         "org.typelevel" %%% "cats-effect" % "0.10",
         "org.scala-js" %% "scalajs-stubs" % ScalaJSVersion % "provided",
         "com.pepegar" %%% "hammock-core" % "0.8.1",
+        "com.pepegar" %%% "hammock-circe" % "0.8.1",
         "org.scalatest" %%% "scalatest" % "3.0.4" % "test"
       )
     }

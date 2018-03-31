@@ -15,6 +15,7 @@ import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.headers.Location
+import org.http4s.server.middleware.Logger
 import org.slf4j.LoggerFactory
 
 class Route[T](db: DynamoConfigDatastore)(
@@ -125,8 +126,10 @@ class Route[T](db: DynamoConfigDatastore)(
     }
   }
 
-  val service: HttpService[IO] = pingService <+> namespaceService <+> tagService <+> versionService <+>
-    tagAsVersionMiddleware(configService)
+  val service: HttpService[IO] = Logger(true, true) {
+    pingService <+> namespaceService <+> tagService <+> versionService <+>
+      tagAsVersionMiddleware(configService)
+  }
 
   private def translate[A](resp: Result[A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
     resp.fold(processError, f).flatten
