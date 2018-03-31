@@ -11,6 +11,7 @@ import io.github.howardjohn.config.ConfigError._
 import io.github.howardjohn.config._
 import io.github.howardjohn.config.backend.impl.DynamoConfigDatastore
 import io.github.howardjohn.config.backend.impl.Scanamo.jsonFormat
+import io.github.howardjohn.config.Request._
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
@@ -185,32 +186,5 @@ object Route {
   case class ErrorMessage(
     error: String,
     details: String
-  )
-
-  case class CreateNamespaceRequest(
-    namespace: String
-  )
-
-  case class CreateTagRequest(
-    tag: String,
-    namespace: String
-  )
-
-  case class MoveTagRequest(
-    version: String,
-    weight: Int
-  )
-
-  case class CreateVersionRequest(
-    version: String
-  )
-
-  case class FreezeVersionRequest(
-    frozen: Boolean
-  )
-
-  case class ConfigRequest(
-    key: String,
-    value: Json
   )
 }

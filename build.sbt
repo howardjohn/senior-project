@@ -15,6 +15,7 @@ lazy val common = project
     libraryDependencies ++= {
       val CirceVersion = "0.9.2"
       Seq(
+        "io.circe" %% "circe-core" % CirceVersion,
         "org.typelevel" %%% "cats-effect" % "0.10",
         "org.scalatest" %% "scalatest" % "3.0.4" % "test"
       )

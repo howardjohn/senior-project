@@ -4,6 +4,7 @@ import cats.Id
 import hammock._
 import hammock.circe.implicits._
 import io.circe.generic.auto._
+import io.github.howardjohn.config.Request.{CreateNamespaceRequest, CreateTagRequest}
 import io.github.howardjohn.config._
 
 class HttpConfigDatastore(http: HttpClient) extends ConfigDatastore[Id] {
@@ -15,7 +16,11 @@ class HttpConfigDatastore(http: HttpClient) extends ConfigDatastore[Id] {
 
   def createNamespace[T: Id](namespace: String): Result[ConfigNamespace[T]] =
     http
-      .post("namespace", Map("namespace" -> namespace))
+      .post("namespace", CreateNamespaceRequest(namespace))
       .map(_ => getNamespace(namespace))
-  def createTag(tag: String, namespace: String): Result[ConfigTag] = ???
+
+  def createTag(tag: String, namespace: String): Result[ConfigTag] =
+    http
+      .post("tag", CreateTagRequest(tag, namespace))
+      .map(_ => getTag(tag))
 }
