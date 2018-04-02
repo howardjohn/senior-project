@@ -7,7 +7,7 @@ import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
 import io.circe.parser.decode
-import io.github.howardjohn.config.ConfigError._
+import io.github.howardjohn.config.ConfigError.{NotFound, _}
 import io.github.howardjohn.config._
 import io.github.howardjohn.config.backend.impl.DynamoConfigDatastore
 import io.github.howardjohn.config.backend.impl.Scanamo.jsonFormat
@@ -77,7 +77,7 @@ class Route[T](db: DynamoConfigDatastore)(
             .getVersion(version)
             .freeze()
         } else {
-          EitherT.leftT[IO, Unit](IllegalWrite("Version is already frozen"): ConfigError)
+          EitherT.leftT[IO, Unit](IllegalWrite("Cannot unfreeze a version."): ConfigError)
         }
       } yield result)
   }
@@ -157,20 +157,12 @@ class Route[T](db: DynamoConfigDatastore)(
 
   private def processError(err: ConfigError): IO[Response[IO]] =
     err match {
-      case InvalidTag => NotFound()
+      case NotFound => NotFound()
       case IllegalWrite(msg) => MethodNotAllowed(ErrorMessage("IllegalWrite", msg).asJson)
       case MissingField(msg) => BadRequest(ErrorMessage("MissingField", msg).asJson)
       case UnknownError(msg) => InternalServerError(ErrorMessage("UnknownError", msg).asJson)
       case ReadError(msg) => InternalServerError(ErrorMessage("ReadError", msg).asJson)
     }
-
-  private def orNotFound[A](item: Result[Option[A]]): Result[A] = EitherT {
-    item.value.map {
-      case Right(Some(value)) => Right(value)
-      case Right(None) => Left(InvalidTag)
-      case Left(error) => Left(error)
-    }
-  }
 
   private def makeUri(uri: String): Result[Uri] =
     EitherT.fromEither[IO] {

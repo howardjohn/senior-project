@@ -1,11 +1,18 @@
 package io.github.howardjohn.config.client
 
-import io.github.howardjohn.config.{ConfigTag, Result, TagEntry}
+import hammock.circe.implicits._
+import io.circe.generic.auto._
+import io.github.howardjohn.config._
 
 class HttpConfigTag(val tagName: String, val namespace: String, http: HttpClient) extends ConfigTag {
-  def getDetails(): Result[Option[TagEntry]] = ???
-  def getDetails(discriminator: String): Result[Option[TagEntry]] = ???
+  private val baseUrl = s"tag/$tagName/namespace/$namespace"
 
-  def moveTag(versions: Map[String, Int]): Result[Unit] = ???
+  def getDetails(): Result[Option[TagEntry]] =
+    http.get(baseUrl)
 
+  def getDetails(discriminator: String): Result[Option[TagEntry]] =
+    http.get(s"$baseUrl?discriminator=$discriminator")
+
+  def moveTag(versions: Map[String, Int]): Result[Unit] =
+    orNotFound(http.put(baseUrl, versions))
 }

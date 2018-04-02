@@ -18,7 +18,7 @@ class HttpClient(interpeter: InterpTrans[IO], baseUri: String) {
       parseJson[T](http.entity)
     }
 
-  def delete[I: Codec](uri: String): Result[Option[Unit]] =
+  def delete(uri: String): Result[Option[Unit]] =
     runRequest[Unit](Hammock.request(Method.DELETE, getUri(uri), Map())) { http =>
       Right(Unit)
     }

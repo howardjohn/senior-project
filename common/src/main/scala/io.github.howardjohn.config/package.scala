@@ -43,10 +43,18 @@ package object config {
 
   sealed trait ConfigError
   object ConfigError {
-    case object InvalidTag extends ConfigError
+    case object NotFound extends ConfigError
     case class IllegalWrite(cause: String) extends ConfigError
     case class MissingField(cause: String) extends ConfigError
     case class ReadError(cause: String) extends ConfigError
     case class UnknownError(cause: String) extends ConfigError
+  }
+
+  def orNotFound[A](item: Result[Option[A]]): Result[A] = EitherT {
+    item.value.map {
+      case Right(Some(value)) => Right(value)
+      case Right(None) => Left(ConfigError.NotFound)
+      case Left(error) => Left(error)
+    }
   }
 }

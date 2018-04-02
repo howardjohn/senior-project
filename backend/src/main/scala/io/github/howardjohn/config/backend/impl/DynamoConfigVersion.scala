@@ -17,8 +17,7 @@ class DynamoConfigVersion[T: DynamoFormat](val namespace: String, val version: S
   val table = Scanamo.configTable[T](namespace)
   private def now = Instant.now.toEpochMilli
 
-  def cloneVersion(newVersionName: String): Result[ConfigVersion[T]] =
-    throw new RuntimeException("Not implemented yet")
+  def cloneVersion(newVersionName: String): Result[ConfigVersion[T]] = ???
 
   def details(): Result[Option[VersionEntry]] =
     scanamo.execRead(Scanamo.versionsTable.get('namespace -> namespace and 'version -> version))
