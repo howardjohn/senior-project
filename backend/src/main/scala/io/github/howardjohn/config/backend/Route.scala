@@ -43,20 +43,21 @@ class Route[T](db: DynamoConfigDatastore)(
     case req @ POST -> Root / "tag" =>
       translateLocation(for {
         request <- parseJson[CreateTagRequest](req)
-        newTag <- db.createTag(request.tag, request.namespace)
+        newTag <- db.getNamespace(request.namespace).createTag(request.tag)
         location <- makeUri(s"/tag/${request.tag}/namespace/${request.namespace}")
       } yield location)
     case req @ PUT -> Root / "tag" / tag / "namespace" / namespace =>
       translateUnit(for {
         req <- parseJson[Map[String, Int]](req)
         result <- db
+          .getNamespace(namespace)
           .getTag(tag)
-          .moveTag(namespace, req)
+          .moveTag(req)
       } yield result)
     case GET -> Root / "tag" / tag / "namespace" / namespace :? Discriminator(discriminator) =>
-      translateOptionalJson(db.getTag(tag).getDetails(namespace, discriminator))
+      translateOptionalJson(db.getNamespace(namespace).getTag(tag).getDetails(discriminator))
     case GET -> Root / "tag" / tag / "namespace" / namespace =>
-      translateOptionalJson(db.getTag(tag).getDetails(namespace))
+      translateOptionalJson(db.getNamespace(namespace).getTag(tag).getDetails())
   }
 
   private val versionService = HttpService[IO] {
@@ -109,7 +110,7 @@ class Route[T](db: DynamoConfigDatastore)(
         OptionT.liftF {
           translate(
             for {
-              tagEntry <- orNotFound(db.getTag(tag).getDetails(namespace, discriminator))
+              tagEntry <- orNotFound(db.getNamespace(namespace).getTag(tag).getDetails(discriminator))
               uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}/config$rest")
             } yield service.orNotFound(req.withUri(uri))
           )(identity)
@@ -118,7 +119,7 @@ class Route[T](db: DynamoConfigDatastore)(
         OptionT.liftF {
           translate(
             for {
-              tagEntry <- orNotFound(db.getTag(tag).getDetails(namespace))
+              tagEntry <- orNotFound(db.getNamespace(namespace).getTag(tag).getDetails())
               uri <- makeUri(s"namespace/$namespace/version/${tagEntry.version}/config$rest")
             } yield service.orNotFound(req.withUri(uri))
           )(identity)

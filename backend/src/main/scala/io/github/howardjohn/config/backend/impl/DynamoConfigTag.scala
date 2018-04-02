@@ -9,12 +9,12 @@ import io.github.howardjohn.config.ConfigError.MissingField
 import io.github.howardjohn.config._
 import io.github.howardjohn.config.ConfigTag
 
-class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
+class DynamoConfigTag(val tagName: String, val namespace: String, scanamo: Scanamo) extends ConfigTag {
   import DynamoConfigTag._
 
   private def now = Instant.now.toEpochMilli
 
-  def getDetails(namespace: String): Result[Option[TagEntry]] =
+  def getDetails(): Result[Option[TagEntry]] =
     scanamo
       .execRead {
         Scanamo.tagsTable
@@ -25,7 +25,7 @@ class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
         case None => Right(None)
       }
 
-  def getDetails(namespace: String, discriminator: String): Result[Option[TagEntry]] =
+  def getDetails(discriminator: String): Result[Option[TagEntry]] =
     scanamo
       .execRead {
         Scanamo.tagsTable
@@ -33,7 +33,7 @@ class DynamoConfigTag(val tagName: String, scanamo: Scanamo) extends ConfigTag {
       }
       .map(_.flatMap(entry => asTagEntry(entry, discriminator)))
 
-  def moveTag(namespace: String, versions: Map[String, Int]): Result[Unit] =
+  def moveTag(versions: Map[String, Int]): Result[Unit] =
     scanamo
       .exec {
         Scanamo.tagsTable.update(

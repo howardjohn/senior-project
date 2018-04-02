@@ -7,6 +7,16 @@ import com.gu.scanamo.syntax._
 import io.github.howardjohn.config._
 
 class DynamoConfigNamespace[T: DynamoFormat](val namespace: String, scanamo: Scanamo) extends ConfigNamespace[T] {
+  def getTag(tag: String): ConfigTag =
+    new DynamoConfigTag(tag, namespace, scanamo)
+
+  def createTag(tag: String): Result[ConfigTag] =
+    scanamo
+      .execRead {
+        Scanamo.tagsTable
+          .put(DynamoTagEntry(tag, namespace, Map(), AuditInfo.default()))
+      }
+      .map(_ => getTag(tag))
 
   def getVersion(version: String): ConfigVersion[T] =
     new DynamoConfigVersion[T](namespace, version, scanamo)
