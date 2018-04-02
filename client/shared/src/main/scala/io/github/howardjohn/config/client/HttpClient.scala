@@ -1,13 +1,13 @@
 package io.github.howardjohn.config.client
 
 import cats.data.EitherT
-import cats.effect.{IO, Sync}
+import cats.effect.IO
 import cats.free.Free
 import hammock._
 import hammock.circe.implicits._
 import io.circe.generic.auto._
-import io.github.howardjohn.config.{ConfigError, Result}
 import io.github.howardjohn.config.ConfigError._
+import io.github.howardjohn.config.{ConfigError, Result}
 
 class HttpClient(interpeter: InterpTrans[IO], baseUri: String) {
   import HttpClient._
@@ -45,6 +45,7 @@ class HttpClient(interpeter: InterpTrans[IO], baseUri: String) {
           http.status.code match {
             case 200 => success(http).map(t => Some(t))
             case 404 => Right(None)
+            case 500 => Left(UnknownError("There was an unknown error."))
             case _ => Left(parseError(http.entity))
           }
         }
@@ -64,7 +65,7 @@ object HttpClient {
   }
 
   def parseJson[T](data: Entity)(implicit dec: Decoder[T]): Either[ConfigError, T] =
-    dec.decode(data).left.map(e => ReadError(e.message))
+    dec.decode(data).left.map(e => ReadError(s"Failed to parse response: ${e.message}"))
 
   case class ErrorMessage(
     error: String,
