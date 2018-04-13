@@ -1,12 +1,11 @@
 package io.github.howardjohn.config.client
 
-import hammock.Codec
 import hammock.circe.implicits._
 import io.circe.generic.auto._
 import io.github.howardjohn.config.Request.FreezeVersionRequest
 import io.github.howardjohn.config._
 
-class HttpConfigVersion[T: Codec](val namespace: String, val version: String, http: HttpClient)
+class HttpConfigVersion[T: JsonCodec](val namespace: String, val version: String, http: HttpClient)
     extends ConfigVersion[T] {
   private val baseUrl = s"namespace/$namespace/version/$version"
 

@@ -1,13 +1,11 @@
 package io.github.howardjohn.config.client
 
-import hammock.Codec
-import io.circe.{Decoder, Encoder}
 import hammock.circe.implicits._
 import io.circe.generic.auto._
 import io.github.howardjohn.config.Request.{CreateTagRequest, CreateVersionRequest}
 import io.github.howardjohn.config._
 
-class HttpConfigNamespace[T: Codec](val namespace: String, http: HttpClient) extends ConfigNamespace[T] {
+class HttpConfigNamespace[T: JsonCodec](val namespace: String, http: HttpClient) extends ConfigNamespace[T] {
   def getTag(tag: String): ConfigTag =
     new HttpConfigTag(tag, namespace, http)
 
