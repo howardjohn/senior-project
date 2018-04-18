@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
 
 lazy val root = project
   .in(file("."))
-  .aggregate(clientJS, clientJVM)
+  .aggregate(common, backend, clientJS, clientJVM, frontend)
 
 lazy val common = project
   .in(file("common"))
@@ -72,6 +72,28 @@ lazy val client = crossProject
   )
   .jvmSettings()
 
+lazy val frontend = project
+  .in(file("frontend"))
+  .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
+  .settings(commonSettings, webpackSettings)
+  .settings(
+    name := "frontend",
+    version := "0.0.1",
+    moduleName := "frontend",
+    resolvers += Resolver.sonatypeRepo("snapshots"),
+    scalacOptions ++= Seq("-Ypartial-unification", "-P:scalajs:sjsDefinedByDefault"),
+    addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.full),
+    libraryDependencies ++= {
+      Seq(
+        "me.shadaj" %%% "slinky-core" % "0.3.2",
+        "me.shadaj" %%% "slinky-web" % "0.3.2",
+        "me.shadaj" %%% "slinky-hot" % "0.3.2",
+        "me.shadaj" %%% "slinky-scalajsreact-interop" % "0.3.2"
+      )
+    }
+  )
+  .dependsOn(common)
+
 lazy val clientJVM = client.jvm.dependsOn(common)
 lazy val clientJS = client.js.dependsOn(common)
 
@@ -82,4 +104,20 @@ val dynamoTestSettings = Seq(
   test in Test := (test in Test).dependsOn(startDynamoDBLocal).value,
   testOptions in Test += dynamoDBLocalTestCleanup.value,
   parallelExecution in Test := false
+)
+
+val webpackSettings = Seq(
+  npmDependencies in Compile ++= Seq("react" -> "16.3.1", "react-dom" -> "16.3.1", "react-proxy" -> "1.1.8"),
+  npmDevDependencies in Compile ++= Seq(
+    "file-loader" -> "1.1.11",
+    "style-loader" -> "0.20.3",
+    "css-loader" -> "0.28.11",
+    "html-webpack-plugin" -> "3.2.0",
+    "copy-webpack-plugin" -> "4.5.1"),
+  version in webpack := "4.5.0",
+  version in startWebpackDevServer := "3.1.3",
+  webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack-fastopt.config.js"),
+  webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack-fastopt.config.js"),
+  webpackDevServerExtraArgs in fastOptJS := Seq("--inline", "--hot"),
+  webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly()
 )
