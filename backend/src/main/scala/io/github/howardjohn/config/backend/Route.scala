@@ -5,13 +5,13 @@ import cats.effect._
 import cats.implicits._
 import io.circe._
 import io.circe.generic.auto._
-import io.circe.syntax._
 import io.circe.parser.decode
-import io.github.howardjohn.config.ConfigError.{NotFound, _}
+import io.circe.syntax._
+import io.github.howardjohn.config.ConfigError.{IllegalWrite, MissingField, ReadError, UnknownError}
+import io.github.howardjohn.config.Request._
 import io.github.howardjohn.config._
 import io.github.howardjohn.config.backend.impl.DynamoConfigDatastore
 import io.github.howardjohn.config.backend.impl.Scanamo.jsonFormat
-import io.github.howardjohn.config.Request._
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
@@ -157,7 +157,7 @@ class Route[T](db: DynamoConfigDatastore)(
 
   private def processError(err: ConfigError): IO[Response[IO]] =
     err match {
-      case NotFound => NotFound()
+      case ConfigError.NotFound => NotFound()
       case IllegalWrite(msg) => MethodNotAllowed(ErrorMessage("IllegalWrite", msg).asJson)
       case MissingField(msg) => BadRequest(ErrorMessage("MissingField", msg).asJson)
       case UnknownError(msg) => InternalServerError(ErrorMessage("UnknownError", msg).asJson)

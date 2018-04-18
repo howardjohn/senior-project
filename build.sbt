@@ -17,14 +17,14 @@ lazy val common = project
       Seq(
         "io.circe" %% "circe-core" % CirceVersion,
         "org.typelevel" %%% "cats-effect" % "0.10",
-        "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+        "org.scalatest" %% "scalatest" % "3.0.4"
       )
     }
   )
 
 lazy val backend = project
   .in(file("backend"))
-  .settings(commonSettings)
+  .settings(commonSettings, dynamoTestSettings)
   .settings(
     name := "backend",
     version := "0.0.1",
@@ -74,3 +74,12 @@ lazy val client = crossProject
 
 lazy val clientJVM = client.jvm.dependsOn(common)
 lazy val clientJS = client.js.dependsOn(common)
+
+val dynamoTestSettings = Seq(
+  dynamoDBLocalDownloadDir := file(".dynamodb-local"),
+  dynamoDBLocalPort := 8042,
+  startDynamoDBLocal := startDynamoDBLocal.dependsOn(compile in Test).value,
+  test in Test := (test in Test).dependsOn(startDynamoDBLocal).value,
+  testOptions in Test += dynamoDBLocalTestCleanup.value,
+  parallelExecution in Test := false
+)
