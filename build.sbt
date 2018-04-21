@@ -107,7 +107,14 @@ val dynamoTestSettings = Seq(
 )
 
 val webpackSettings = Seq(
-  npmDependencies in Compile ++= Seq("react" -> "16.3.1", "react-dom" -> "16.3.1", "react-proxy" -> "1.1.8"),
+  npmDependencies in Compile ++= Seq(
+    "react" -> "16.3.1",
+    "react-dom" -> "16.3.1",
+    "react-proxy" -> "1.1.8",
+    "bootstrap" -> "4.0.0",
+    "reactstrap" -> "5.0.0",
+    "react-router-dom" -> "4.2.2"
+  ),
   npmDevDependencies in Compile ++= Seq(
     "file-loader" -> "1.1.11",
     "style-loader" -> "0.20.3",
