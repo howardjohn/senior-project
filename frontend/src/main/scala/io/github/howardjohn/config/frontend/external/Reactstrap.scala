@@ -69,6 +69,9 @@ object Reactstrap extends js.Object {
 }
 
 @react object ListGroupItem extends ExternalComponentWithAttributes[a.tag.type] {
-  case class Props(active: Boolean = false, action: Boolean = false)
+  case class Props(
+    active: Boolean = false,
+    action: Boolean = false
+  )
   override val component = Reactstrap.ListGroupItem
 }

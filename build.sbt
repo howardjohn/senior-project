@@ -3,17 +3,19 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.4"
 )
 
+lazy val ScalaJSVersion = "1.0.0-M3"
+lazy val CirceVersion = "0.9.2"
+
 lazy val root = project
   .in(file("."))
-  .aggregate(common, backend, clientJS, clientJVM, frontend)
+  .aggregate(commonJVM, commonJS, backend, clientJS, clientJVM, frontend)
 
-lazy val common = project
+lazy val common = crossProject
   .in(file("common"))
   .settings(commonSettings)
   .settings(
     moduleName := "common",
     libraryDependencies ++= {
-      val CirceVersion = "0.9.2"
       Seq(
         "io.circe" %% "circe-core" % CirceVersion,
         "org.typelevel" %%% "cats-effect" % "0.10",
@@ -21,6 +23,12 @@ lazy val common = project
       )
     }
   )
+.jvmSettings(
+  libraryDependencies += "org.scala-js" %% "scalajs-stubs" % ScalaJSVersion % "provided"
+)
+
+lazy val commonJVM = common.jvm
+lazy val commonJS = common.js
 
 lazy val backend = project
   .in(file("backend"))
@@ -33,7 +41,6 @@ lazy val backend = project
     scalacOptions ++= Seq("-Ypartial-unification"),
     libraryDependencies ++= {
       val Http4sVersion = "0.18.0"
-      val CirceVersion = "0.9.2"
       Seq(
         "io.github.howardjohn" %% "http4s-lambda" % "0.2.0-SNAPSHOT",
         "org.http4s" %% "http4s-dsl" % Http4sVersion,
@@ -46,7 +53,7 @@ lazy val backend = project
       )
     }
   )
-  .dependsOn(common)
+  .dependsOn(commonJVM)
 
 lazy val client = crossProject
   .in(file("client"))
@@ -56,8 +63,6 @@ lazy val client = crossProject
     moduleName := "client",
     scalacOptions ++= Seq("-Ypartial-unification"),
     libraryDependencies ++= {
-      val CirceVersion = "0.9.2"
-      val ScalaJSVersion = "1.0.0-M3"
       Seq(
         "org.typelevel" %%% "cats-effect" % "0.10",
         "org.scala-js" %% "scalajs-stubs" % ScalaJSVersion % "provided",
@@ -68,12 +73,18 @@ lazy val client = crossProject
     }
   )
   .jsSettings(
+    libraryDependencies += "org.scala-js" %%% "scalajs-java-time" % "0.2.4",
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
   )
   .jvmSettings()
 
+lazy val clientJVM = client.jvm.dependsOn(commonJVM)
+lazy val clientJS = client.js.dependsOn(commonJS)
+
 lazy val frontend = project
   .in(file("frontend"))
+  .dependsOn(clientJS)
+  .dependsOn(commonJS)
   .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
   .settings(commonSettings, webpackSettings)
   .settings(
@@ -83,19 +94,14 @@ lazy val frontend = project
     resolvers += Resolver.sonatypeRepo("snapshots"),
     scalacOptions ++= Seq("-Ypartial-unification", "-P:scalajs:sjsDefinedByDefault"),
     addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.full),
-    libraryDependencies ++= {
+    libraryDependencies ++=
       Seq(
         "me.shadaj" %%% "slinky-core" % "0.3.2",
         "me.shadaj" %%% "slinky-web" % "0.3.2",
         "me.shadaj" %%% "slinky-hot" % "0.3.2",
         "me.shadaj" %%% "slinky-scalajsreact-interop" % "0.3.2"
       )
-    }
   )
-  .dependsOn(common)
-
-lazy val clientJVM = client.jvm.dependsOn(common)
-lazy val clientJS = client.js.dependsOn(common)
 
 val dynamoTestSettings = Seq(
   dynamoDBLocalDownloadDir := file(".dynamodb-local"),
@@ -113,7 +119,8 @@ val webpackSettings = Seq(
     "react-proxy" -> "1.1.8",
     "bootstrap" -> "4.0.0",
     "reactstrap" -> "5.0.0",
-    "react-router-dom" -> "4.2.2"
+    "react-router-dom" -> "4.2.2",
+    "react-bootstrap-table" -> "4.3.1"
   ),
   npmDevDependencies in Compile ++= Seq(
     "file-loader" -> "1.1.11",

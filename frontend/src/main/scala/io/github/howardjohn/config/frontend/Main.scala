@@ -6,6 +6,7 @@ import slinky.web.ReactDOM
 
 import scala.scalajs.{js, LinkingInfo}
 import scala.scalajs.js.annotation.{JSExportTopLevel, JSImport}
+
 @JSImport("resources/index.css", JSImport.Default)
 @js.native
 object IndexCSS extends js.Object
@@ -14,8 +15,13 @@ object IndexCSS extends js.Object
 @js.native
 object BootstrapCSS extends js.Object
 
+@JSImport("react-bootstrap-table/dist/react-bootstrap-table-all.min.css", JSImport.Default)
+@js.native
+object BootstrapTableCSS extends js.Object
+
 object Main {
   private val bootstrapCss = BootstrapCSS
+  private val bootstrapTableCss = BootstrapTableCSS
   private val css = IndexCSS
 
   @JSExportTopLevel("entrypoint.main")

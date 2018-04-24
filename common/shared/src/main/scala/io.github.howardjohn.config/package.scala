@@ -5,9 +5,12 @@ import java.time.Instant
 import cats.data.EitherT
 import cats.effect.IO
 
+import scala.scalajs.js.annotation.JSExportAll
+
 package object config {
   type Result[A] = EitherT[IO, ConfigError, A]
 
+  @JSExportAll
   case class ConfigEntry[T](
     key: String,
     version: String,
@@ -15,6 +18,7 @@ package object config {
     auditInfo: AuditInfo
   )
 
+  @JSExportAll
   case class VersionEntry(
     namespace: String,
     version: String,
@@ -22,6 +26,7 @@ package object config {
     auditInfo: AuditInfo
   )
 
+  @JSExportAll
   case class TagEntry(
     tag: String,
     namespace: String,
@@ -29,6 +34,7 @@ package object config {
     auditInfo: AuditInfo
   )
 
+  @JSExportAll
   case class AuditInfo(
     createdTime: Option[Long] = None,
     modifiedTime: Option[Long] = None

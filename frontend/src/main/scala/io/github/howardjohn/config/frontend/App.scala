@@ -1,17 +1,38 @@
 package io.github.howardjohn.config.frontend
 
-import io.github.howardjohn.config.frontend.external.Button.Props
+import io.github.howardjohn.config.{AuditInfo, ConfigEntry}
+import io.github.howardjohn.config.frontend.component.NamespaceTable
 import io.github.howardjohn.config.frontend.external._
+import org.scalajs.dom.Event
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.ReactElement
 import slinky.web.html._
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSImport
-
-@react class App extends StatelessComponent {
+@react class App extends Component {
   type Props = Unit
+  case class State(
+    selectedNamespace: String,
+    namespaces: Map[String, Seq[ConfigEntry[String]]]
+  )
+
+  def initialState: State = State(
+    selectedNamespace = "example",
+    namespaces = Map(
+      "example" -> Seq(
+        ConfigEntry(
+          "key1",
+          "version1",
+          "someconfig",
+          AuditInfo.default()
+        )),
+      "Test" -> Seq.empty
+    )
+  )
+
+  def handleClick(namespace: String)(e: Event): Unit = {
+    this.setState(_.copy(selectedNamespace = namespace))
+  }
 
   def render: ReactElement =
     div(
@@ -20,12 +41,19 @@ import scala.scalajs.js.annotation.JSImport
         div(className := "row")(
           div(className := "col-3")(
             ListGroup()(
-              ListGroupItem(active = true, action = true)("Namespace 1"),
-              ListGroupItem(action = true)("Namespace 2")
+              this.state.namespaces.keys.map { name =>
+                ListGroupItem(
+                  active = this.state.selectedNamespace == name,
+                  action = true
+                )(
+                  key := name,
+                  onClick := handleClick(name) _
+                )(name)
+              }
             )
           ),
           div(className := "col-9")(
-            "Select a namespace to view it"
+            NamespaceTable(contents = this.state.namespaces(this.state.selectedNamespace))
           )
         )
       )
