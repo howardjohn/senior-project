@@ -60,8 +60,8 @@ object HttpClient {
   private def processError(err: ErrorMessage) = err.error match {
     case "IllegalWrite" => IllegalWrite(err.details)
     case "MissingField" => MissingField(err.details)
-    case "UnknownError" => UnknownError(err.details)
     case "ReadError" => ReadError(err.details)
+    case _ => UnknownError(err.details)
   }
 
   def parseJson[T](data: Entity)(implicit dec: Decoder[T]): Either[ConfigError, T] =

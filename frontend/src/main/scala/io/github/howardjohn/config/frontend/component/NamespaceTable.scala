@@ -1,12 +1,13 @@
 package io.github.howardjohn.config.frontend.component
 
+import io.circe.Json
 import io.github.howardjohn.config.ConfigEntry
 import io.github.howardjohn.config.frontend.external.{BootstrapTable, TableHeaderColumn}
 import slinky.core.StatelessComponent
 import slinky.core.annotations.react
 import slinky.core.facade.ReactElement
-import scala.scalajs.js
 
+import scala.scalajs.js
 import js.JSConverters._
 
 @react class NamespaceTable extends StatelessComponent {

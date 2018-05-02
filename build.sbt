@@ -66,15 +66,16 @@ lazy val client = crossProject
       Seq(
         "org.typelevel" %%% "cats-effect" % "0.10",
         "org.scala-js" %% "scalajs-stubs" % ScalaJSVersion % "provided",
-        "com.pepegar" %%% "hammock-core" % "0.8.1",
-        "com.pepegar" %%% "hammock-circe" % "0.8.1",
+        "com.pepegar" %%% "hammock-core" % "0.8.3",
+        "com.pepegar" %%% "hammock-circe" % "0.8.3",
         "org.scalatest" %%% "scalatest" % "3.0.4" % "test"
       )
     }
   )
   .jsSettings(
     libraryDependencies += "org.scala-js" %%% "scalajs-java-time" % "0.2.4",
-    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
+    scalaJSUseMainModuleInitializer := true
   )
   .jvmSettings()
 

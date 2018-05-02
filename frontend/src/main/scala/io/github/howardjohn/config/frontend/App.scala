@@ -1,6 +1,9 @@
 package io.github.howardjohn.config.frontend
 
-import io.github.howardjohn.config.{AuditInfo, ConfigEntry}
+import io.circe.Json
+import io.github.howardjohn.config.AuditInfo
+import io.github.howardjohn.config.ConfigEntry
+import io.github.howardjohn.config.frontend.action.Actions
 import io.github.howardjohn.config.frontend.component.NamespaceTable
 import io.github.howardjohn.config.frontend.external._
 import org.scalajs.dom.Event
@@ -11,27 +14,60 @@ import slinky.web.html._
 
 @react class App extends Component {
   type Props = Unit
+
   case class State(
     selectedNamespace: String,
-    namespaces: Map[String, Seq[ConfigEntry[String]]]
+    tagName: String,
+    namespaces: Seq[String],
+    activeNamespace: Seq[ConfigEntry[String]],
+    error: Option[String] = None
   )
 
-  def initialState: State = State(
-    selectedNamespace = "example",
-    namespaces = Map(
-      "example" -> Seq(
+  def fetchNamespace(namespace: String): Unit =
+    Actions.client
+      .getNamespace[Json](namespace)
+      .getTag(this.state.tagName)
+      .getDetails()
+      .flatMap { td =>
+        Actions.client
+          .getNamespace[Json](namespace)
+          .getVersion(td.get.version)
+          .getAll()
+      }
+      .value
+      .unsafeRunAsync {
+        case Right(Right(entries)) =>
+          this.setState {
+            _.copy(
+              error = None,
+              activeNamespace = entries.map(entry => entry.copy(value = entry.value.spaces4))
+            )
+          }
+        case Left(err) =>
+          this.setState(_.copy(error = Some(s"Couldn't fetch versions. Error: $err")))
+        case Right(Left(err)) =>
+          this.setState(_.copy(error = Some(s"Couldn't fetch versions. Error: $err")))
+      }
+
+  override def componentWillMount(): Unit = fetchNamespace(this.state.selectedNamespace)
+
+  override def initialState: State =
+    State(
+      selectedNamespace = "example",
+      tagName = "latest",
+      namespaces = Seq("example", "Test"),
+      activeNamespace = Seq(
         ConfigEntry(
           "key1",
           "version1",
-          "someconfig",
+          "blah",
           AuditInfo.default()
-        )),
-      "Test" -> Seq.empty
+        ))
     )
-  )
 
   def handleClick(namespace: String)(e: Event): Unit = {
     this.setState(_.copy(selectedNamespace = namespace))
+    this.fetchNamespace(namespace)
   }
 
   def render: ReactElement =
@@ -41,7 +77,7 @@ import slinky.web.html._
         div(className := "row")(
           div(className := "col-3")(
             ListGroup()(
-              this.state.namespaces.keys.map { name =>
+              this.state.namespaces.map { name =>
                 ListGroupItem(
                   active = this.state.selectedNamespace == name,
                   action = true
@@ -53,7 +89,10 @@ import slinky.web.html._
             )
           ),
           div(className := "col-9")(
-            NamespaceTable(contents = this.state.namespaces(this.state.selectedNamespace))
+            this.state.error match {
+              case Some(err) => Alert("warning")(err)
+              case None => NamespaceTable(contents = this.state.activeNamespace)
+            }
           )
         )
       )

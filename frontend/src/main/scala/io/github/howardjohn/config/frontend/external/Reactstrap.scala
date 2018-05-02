@@ -19,6 +19,7 @@ object Reactstrap extends js.Object {
   val NavLink: js.Object = js.native
   val ListGroup: js.Object = js.native
   val ListGroupItem: js.Object = js.native
+  val Alert: js.Object = js.native
 }
 
 @react object Button extends ExternalComponent {
@@ -66,6 +67,11 @@ object Reactstrap extends js.Object {
 @react object ListGroup extends ExternalComponent {
   case class Props()
   override val component = Reactstrap.ListGroup
+}
+
+@react object Alert extends ExternalComponent {
+  case class Props(color: String = "success")
+  override val component = Reactstrap.Alert
 }
 
 @react object ListGroupItem extends ExternalComponentWithAttributes[a.tag.type] {

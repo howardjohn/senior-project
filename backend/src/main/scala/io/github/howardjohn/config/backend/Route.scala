@@ -16,8 +16,9 @@ import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.headers.Location
-import org.http4s.server.middleware.Logger
+import org.http4s.server.middleware.{CORS, CORSConfig, Logger}
 import org.slf4j.LoggerFactory
+import scala.concurrent.duration._
 
 class Route[T](db: DynamoConfigDatastore)(
   implicit encoders: Encoder[Seq[ConfigEntry[Json]]],
@@ -72,13 +73,12 @@ class Route[T](db: DynamoConfigDatastore)(
     case req @ PUT -> Root / "namespace" / namespace / "version" / version =>
       translateUnit(for {
         entry <- parseJson[FreezeVersionRequest](req)
-        result <- if (entry.frozen) {
+        result <- if (entry.frozen)
           db.getNamespace(namespace)
             .getVersion(version)
             .freeze()
-        } else {
+        else
           EitherT.leftT[IO, Unit](IllegalWrite("Cannot unfreeze a version."): ConfigError)
-        }
       } yield result)
   }
 
@@ -128,10 +128,16 @@ class Route[T](db: DynamoConfigDatastore)(
     }
   }
 
-  val service: HttpService[IO] = Logger(true, true) {
+  val corsConfig = CORSConfig(
+    anyOrigin = true,
+    anyMethod = true,
+    allowCredentials = true,
+    maxAge = 1.day.toSeconds)
+
+  val service: HttpService[IO] = CORS(Logger(true, true) {
     pingService <+> namespaceService <+> tagService <+> versionService <+>
       tagAsVersionMiddleware(configService)
-  }
+  }, corsConfig)
 
   private def translate[A](resp: Result[A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
     resp.fold(processError, f).flatten
