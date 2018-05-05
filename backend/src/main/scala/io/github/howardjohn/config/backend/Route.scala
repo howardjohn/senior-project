@@ -35,6 +35,8 @@ class Route[T](db: DynamoConfigDatastore)(
         _ <- db.createNamespace[Json](request.namespace)
         location <- makeUri(s"/namespace/${request.namespace}")
       } yield location)
+    case GET -> Root / "namespace" =>
+      translateJson(db.getAllNamespaces())
     case GET -> Root / "namespace" / namespace =>
       translateJson(db.getNamespace[Json](namespace).getVersions())
   }

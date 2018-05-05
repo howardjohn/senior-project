@@ -17,10 +17,17 @@ import io.github.howardjohn.config.{ConfigEntry, ConfigError, Result, VersionEnt
 import io.github.howardjohn.config.ConfigError._
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.{Future => JFuture}
 
-class Scanamo(val dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
+class Scanamo(dynamo: AmazonDynamoDBAsync)(implicit ec: ExecutionContext) {
   import Scanamo._
+
+  def execAwsClient[T](f: AmazonDynamoDBAsync => JFuture[T]): IO[T] =
+    IO.fromFuture(IO {
+      Future(f(dynamo).get())
+    })
+
   def execRaw[A](ops: ScanamoOps[A]): IO[A] = IO.fromFuture(IO(ScanamoAsync.exec(dynamo)(ops)))
 
   def exec[A, E](ops: ScanamoOps[Either[E, A]]): Result[A] =

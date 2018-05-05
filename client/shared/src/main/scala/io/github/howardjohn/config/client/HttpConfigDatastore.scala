@@ -9,6 +9,9 @@ class HttpConfigDatastore(http: HttpClient) extends ConfigDatastore[JsonCodec] {
   def getNamespace[T: JsonCodec](namespace: String): ConfigNamespace[T] =
     new HttpConfigNamespace[T](namespace, http)
 
+  def getAllNamespaces(): Result[Seq[String]] =
+    http.get[Seq[String]]("namespace").map(_.getOrElse(Seq.empty))
+
   def createNamespace[T: JsonCodec](namespace: String): Result[ConfigNamespace[T]] =
     http
       .post("namespace", CreateNamespaceRequest(namespace))

@@ -17,6 +17,13 @@ trait ConfigDatastore[B[_]] {
   def getNamespace[T: B](namespace: String): ConfigNamespace[T]
 
   /**
+    * Gets all namespaces available. Because we don't know the types of these namespaces, only the name is returned.
+    *
+    * @return the name of all namespaces.
+    */
+  def getAllNamespaces(): Result[Seq[String]]
+
+  /**
    * Creates a new namespace.
    *
    * @param namespace the name of the namespace.
