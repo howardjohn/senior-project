@@ -12,7 +12,7 @@ provider:
       Resource: "arn:aws:dynamodb:us-west-2:*"
 
 package:
-  artifact: target/scala-2.12/core-assembly-0.0.1.jar
+  artifact: backend/target/scala-2.12/backend-assembly-0.0.1.jar
 
 functions:
   api:
@@ -22,3 +22,44 @@ functions:
           path: "{proxy+}"
           method: any
           cors: true
+
+resources:
+  Resources:
+    TagsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Tags
+        AttributeDefinitions:
+          - AttributeName: tag
+            AttributeType: S
+          - AttributeName: namespace
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tag
+            KeyType: HASH
+          - AttributeName: namespace
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+    VersionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Versions
+        AttributeDefinitions:
+          - AttributeName: namespace
+            AttributeType: S
+          - AttributeName: version
+            AttributeType: S
+        KeySchema:
+          - AttributeName: namespace
+            KeyType: HASH
+          - AttributeName: version
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+    FrontEndBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: config-frontend-example
