@@ -9,14 +9,14 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:*
-      Resource: "arn:aws:dynamodb:us-west-2:*"
+      Resource: "*"
 
 package:
   artifact: backend/target/scala-2.12/backend-assembly-0.0.1.jar
 
 functions:
   api:
-    handler: io.github.howardjohn.core.LambdaServer$EntryPoint::handle
+    handler: io.github.howardjohn.config.backend.LambdaServer$EntryPoint::handle
     events:
       - http:
           path: "{proxy+}"
@@ -63,3 +63,13 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: config-frontend-example
+
+custom:
+  s3Sync:
+    - bucketName: config-frontend-example
+      bucketPrefix: assets/
+      localDir: frontend/build/
+      acl: public-read
+
+plugins:
+  - serverless-s3-sync
