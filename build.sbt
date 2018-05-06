@@ -132,7 +132,7 @@ val webpackSettings = Seq(
   version in webpack := "4.5.0",
   version in startWebpackDevServer := "3.1.3",
   webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack-fastopt.config.js"),
-  webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack-fastopt.config.js"),
+  webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack-opt.config.js"),
   webpackDevServerExtraArgs in fastOptJS := Seq("--inline", "--hot"),
   webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly()
 )
