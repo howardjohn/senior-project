@@ -130,16 +130,10 @@ class Route[T](db: DynamoConfigDatastore)(
     }
   }
 
-  val corsConfig = CORSConfig(
-    anyOrigin = true,
-    anyMethod = true,
-    allowCredentials = true,
-    maxAge = 1.day.toSeconds)
-
-  val service: HttpService[IO] = CORS(Logger(true, true) {
+  val service: HttpService[IO] = CORS(
     pingService <+> namespaceService <+> tagService <+> versionService <+>
-      tagAsVersionMiddleware(configService)
-  }, corsConfig)
+      tagAsVersionMiddleware(configService),
+    CORS.DefaultCORSConfig)
 
   private def translate[A](resp: Result[A])(f: A => IO[Response[IO]]): IO[Response[IO]] =
     resp.fold(processError, f).flatten

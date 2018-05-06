@@ -42,7 +42,7 @@ lazy val backend = project
     libraryDependencies ++= {
       val Http4sVersion = "0.18.0"
       Seq(
-        "io.github.howardjohn" %% "http4s-lambda" % "0.2.0-SNAPSHOT",
+        "io.github.howardjohn" %% "http4s-lambda" % "0.2.0",
         "org.http4s" %% "http4s-dsl" % Http4sVersion,
         "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
         "io.circe" %% "circe-parser" % CirceVersion,
