@@ -1,29 +1,33 @@
 package io.github.howardjohn.config.frontend
 
+import cats.effect.IO
 import io.circe.Json
 import io.github.howardjohn.config.AuditInfo
 import io.github.howardjohn.config.ConfigEntry
 import io.github.howardjohn.config.frontend.action.Actions
-import io.github.howardjohn.config.frontend.component.NamespaceTable
+import io.github.howardjohn.config.frontend.component.{NamespaceTable, Navigation}
 import io.github.howardjohn.config.frontend.external._
 import org.scalajs.dom.Event
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.ReactElement
 import slinky.web.html._
+import cats.implicits._
 
 @react class App extends Component {
   type Props = Unit
 
   case class State(
-    selectedNamespace: String,
-    tagName: String,
-    namespaces: Seq[String],
-    activeNamespace: Seq[ConfigEntry[String]],
+    selectedNamespace: Option[String] = None,
+    tagName: String = "",
+    namespaces: Seq[String] = Seq.empty,
+    activeNamespace: Seq[ConfigEntry[String]] = Seq.empty,
     error: Option[String] = None
   )
 
-  def fetchNamespace(namespace: String): Unit =
+  override def initialState: State = State()
+
+  def fetchNamespace(namespace: String): IO[Seq[ConfigEntry[String]]] =
     Actions.client
       .getNamespace[Json](namespace)
       .getTag(this.state.tagName)
@@ -35,40 +39,66 @@ import slinky.web.html._
           .getAll()
       }
       .value
-      .unsafeRunAsync {
-        case Right(Right(entries)) =>
-          this.setState {
-            _.copy(
-              error = None,
-              activeNamespace = entries.map(entry => entry.copy(value = entry.value.spaces4))
-            )
+      .flatMap {
+        case Right(entries) =>
+          IO {
+            val stringEntries = entries.map(entry => entry.copy(value = entry.value.spaces4))
+            this.setState {
+              _.copy(
+                error = None,
+                activeNamespace = stringEntries
+              )
+            }
+            stringEntries
           }
         case Left(err) =>
-          this.setState(_.copy(error = Some(s"Couldn't fetch versions. Error: $err")))
-        case Right(Left(err)) =>
-          this.setState(_.copy(error = Some(s"Couldn't fetch versions. Error: $err")))
+          IO {
+            this.setState(_.copy(error = Some(s"Couldn't fetch versions. Error: $err")))
+            Seq.empty
+          }
       }
 
-  override def componentWillMount(): Unit = fetchNamespace(this.state.selectedNamespace)
+  def fetchNamespaces(): IO[Seq[String]] =
+    Actions.client
+      .getAllNamespaces()
+      .value
+      .flatMap {
+        case Right(newNamespaces) =>
+          IO {
+            this.setState {
+              _.copy(
+                error = None,
+                namespaces = newNamespaces,
+                selectedNamespace = newNamespaces.headOption
+              )
+            }
+            newNamespaces
+          }
+        case Left(err) =>
+          IO {
+            this.setState(_.copy(error = Some(s"Couldn't fetch namespaces. Error: $err")))
+            Seq()
+          }
+      }
 
-  override def initialState: State =
-    State(
-      selectedNamespace = "example",
-      tagName = "latest",
-      namespaces = Seq("example", "Test"),
-      activeNamespace = Seq(
-        ConfigEntry(
-          "key1",
-          "version1",
-          "blah",
-          AuditInfo.default()
-        ))
-    )
+  override def componentWillMount(): Unit =
+    fetchNamespaces()
+      .flatMap { ns =>
+        ns.headOption.traverse(fetchNamespace)
+      }
+      .unsafeRunAsync(recordError)
+
+  private def recordError[T](d: Either[Throwable, T]): Unit = d match {
+    case Right(_) => ()
+    case Left(err) => this.setState(_.copy(error = Some(s"Unknown error: $err")))
+  }
 
   def handleClick(namespace: String)(e: Event): Unit = {
-    this.setState(_.copy(selectedNamespace = namespace))
-    this.fetchNamespace(namespace)
-  }
+    for {
+      _ <- this.fetchNamespace(namespace)
+      _ <- IO(this.setState(_.copy(selectedNamespace = Some(namespace))))
+    } yield ()
+  }.unsafeRunAsync(recordError)
 
   def render: ReactElement =
     div(
@@ -79,7 +109,7 @@ import slinky.web.html._
             ListGroup()(
               this.state.namespaces.map { name =>
                 ListGroupItem(
-                  active = this.state.selectedNamespace == name,
+                  active = this.state.selectedNamespace == Some(name),
                   action = true
                 )(
                   key := name,
@@ -94,23 +124,6 @@ import slinky.web.html._
               case None => NamespaceTable(contents = this.state.activeNamespace)
             }
           )
-        )
-      )
-    )
-}
-
-@react class Navigation extends StatelessComponent {
-  type Props = Unit
-
-  def render =
-    Navbar(dark = true, color = Some("primary"), expand = Some("md"))(className := "fixed-top")(
-      NavbarBrand()(href := "#")("Dynamic Configuration"),
-      Nav(navbar = true)(
-        NavItem()(
-          NavLink(active = true)(href := "#")("Namespaces")
-        ),
-        NavItem()(
-          NavLink(active = true)(href := "#")("Tags")
         )
       )
     )
