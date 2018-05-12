@@ -7,7 +7,7 @@ import org.scalatest.{FeatureSpec, GivenWhenThen}
 trait ConfigBehavior { this: FeatureSpec with GivenWhenThen =>
   import ConfigBehavior._
 
-  def configDatastore[B[_]](ds: => ConfigDatastore[B])(implicit ev: B[String]) = {
+  def configDatastore[B[_]](ds: => ConfigDatastore[B])(implicit ev: B[String]): Unit = {
     scenario("a tag is created") {
       Given("a namespace with no tags")
       val ns = ds.getNamespace[String](namespace)
@@ -40,6 +40,27 @@ trait ConfigBehavior { this: FeatureSpec with GivenWhenThen =>
 
       And("it should initially be unfrozen")
       assert(details.map(_.frozen) === Some(false))
+    }
+
+    scenario("a config entry is created") {
+      Given("an empty version")
+      val ns = ds.getNamespace[String](namespace)
+      runIO(ns.getVersions()) shouldBe empty
+      runIO {
+        for {
+          version <- ns.createVersion(version)
+          details <- version.getAll()
+        } yield details
+      } shouldBe empty
+
+      When("we create a new config entry")
+      val entry = runIO(for {
+        _ <- ns.getVersion(version).write("key", "value")
+        entry <- ns.getVersion(version).get("key")
+      } yield entry)
+
+      Then("the entry should be created")
+      assert(entry.map(_.value) === Some("value"))
     }
   }
 
